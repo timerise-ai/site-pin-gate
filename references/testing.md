@@ -3,7 +3,7 @@
 Two files. The first exercises every pure helper and the attempt store. The
 second drives the handler with real `NextRequest` objects through every row of
 the behaviour contract in [handler.md](handler.md), including the three
-off-origin return paths that the source redirected to.
+off-origin return paths the sanitiser has to collapse.
 
 Both files import from `vitest`. `bun test` rewrites that import to its own
 runner, so they run unchanged under either:
@@ -14,7 +14,7 @@ bun test lib/site-gate            # bun
 ```
 
 They were verified under `bun test` (35 tests) and type-checked under
-`strict` and `noUncheckedIndexedAccess`. `next/server` must be resolvable —
+`strict` and `noUncheckedIndexedAccess`. `next/server` must be resolvable, and
 it is, in any Next.js app.
 
 ## Helpers and store
@@ -273,9 +273,9 @@ describe('siteGate', () => {
 ## What is not covered
 
 - The proxy runtime itself. The tests call the handler directly; the wiring in
-  `proxy.ts` is four lines, and the source module proved `crypto.subtle` runs
-  in the Next 16 proxy. Verify the deployed environment with the smoke checks
-  in [operations.md](operations.md).
+  `proxy.ts` is four lines, and `crypto.subtle` is available in the Next 16
+  proxy. Verify the deployed environment with the smoke checks in
+  [operations.md](operations.md).
 - Timing. `constantTimeEqual` is tested for correctness, not for timing.
 - The Redis attempt store sketch in [adaptation.md](adaptation.md).
 

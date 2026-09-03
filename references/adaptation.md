@@ -9,7 +9,7 @@ attempt counter.
 | Seam | This skill ships | Your app supplies | Where it plugs in |
 |---|---|---|---|
 | Secrets | `SITE_PIN`, `SITE_GATE_SECRET`, `SITE_GATE_BRAND` env vars | Its env management, per environment | `readSiteGateConfig` in `config.ts` |
-| Entry point | `createSiteGate()` + a `proxy.ts` template | `proxy.ts` (Next 16) or `middleware.ts` (Next 13–15), and whatever it already runs there | [handler.md](handler.md) |
+| Entry point | `createSiteGate()` + a `proxy.ts` template | `proxy.ts` (Next 16) or `middleware.ts` (Next 13 to 15), and whatever it already runs there | [handler.md](handler.md) |
 | Matcher | "everything but build assets" | Its own exclusions: webhooks, health checks, an already-public API | `config.matcher` |
 | Cookie name, unlock path | `site_access`, `/__unlock` | Names that collide with nothing; the unlock path outside any locale prefix | `SITE_GATE_DEFAULTS`, or `readSiteGateConfig(env, overrides)` |
 | Strings | `GateStrings` type, English table | One table per locale it serves | `createSiteGate({ strings })` |
@@ -33,18 +33,18 @@ cat CLAUDE.md AGENTS.md 2>/dev/null | head -60
 ```
 
 Then read the existing proxy or middleware end to end. The gate goes **first**
-in it — before locale routing, before auth, before rewrites — because every
+in it, before locale routing, before auth, before rewrites, because every
 one of those may redirect, and a redirect from a locked site leaks the route
 it redirects to.
 
 **Add no dependency.** The templates import only `next/server` and Web
 Crypto, both already present in every Next.js app.
 
-## Next 16 `proxy.ts` versus Next 13–15 `middleware.ts`
+## Next 16 `proxy.ts` versus Next 13 to 15 `middleware.ts`
 
 The body is identical; only the file name and the export change.
 
-| | Next 16 | Next 13–15 |
+| | Next 16 | Next 13 to 15 |
 |---|---|---|
 | File | `proxy.ts` (or `src/proxy.ts`) | `middleware.ts` (or `src/middleware.ts`) |
 | Export | `export async function proxy(request)` | `export async function middleware(request)` |
@@ -86,7 +86,7 @@ export const config = {
 
 `next-intl` ships one strings table per locale in the host already; the gate
 cannot read it (the proxy has no message provider), so pass the gate strings
-explicitly — see "Strings" below.
+explicitly: see "Strings" below.
 
 ## Choosing the matcher
 
@@ -99,7 +99,7 @@ The matcher decides what the gate ever sees. Two defensible shapes:
 
 With the default matcher, the site's own `fetch('/api/...')` calls still work:
 the browser sends the gate cookie on same-origin requests. What breaks is
-anything **without** the cookie — a webhook, an uptime probe, a mobile app.
+anything **without** the cookie: a webhook, an uptime probe, a mobile app.
 Exclude those paths explicitly rather than opening all of `/api`:
 
 ```ts
@@ -151,7 +151,7 @@ The page is a single HTML document with its CSS inline. This is deliberate:
 the proxy has no access to the app's stylesheet or component tree, and the
 gate must render when the app behind it is broken. Restyle by editing the
 custom properties in the `:root` block (background, foreground, muted, card,
-border, accent, error) — both the light and the `prefers-color-scheme: dark`
+border, accent, error), in both the light and the `prefers-color-scheme: dark`
 sets. If the host insists on its own stylesheet, the matcher's default
 excludes nothing under `public/`, so a `<link>` to `/gate.css` would itself be
 gated; add `gate\\.css` to the matcher exclusion before linking it.
@@ -216,9 +216,41 @@ export function createRedisAttemptStore(
 }
 ```
 
-This adapter is a design, not production-proven; the in-memory store is what
-shipped. It compiles against the two-method shape above, which `ioredis` and
-the Upstash client both satisfy.
+This adapter is a design and has never run in production; the in-memory store
+is what ships. It compiles against the two-method shape above, which `ioredis`
+and the Upstash client both satisfy.
+
+## Order of work
+
+1. Run the host probe above and fill in the seam table.
+2. Copy `config.ts`, `core.ts` and `attempts.ts` from [module.md](module.md);
+   they have no framework import and nothing to adapt but the defaults.
+3. Copy `page.ts` and `handler.ts` from [handler.md](handler.md), restyle the
+   `:root` block, and add a strings table per locale.
+4. Wire the gate first in `proxy.ts` or `middleware.ts` and choose the matcher.
+5. Set the env vars per environment and run the smoke checks in
+   [operations.md](operations.md).
+6. Copy the two suites from [testing.md](testing.md) into the host's runner.
+
+## The non-negotiables
+
+Restated from `SKILL.md`, because this is the file open while the module is
+being fitted to a host. None of the six is a style preference, and each is
+covered by the suite in [testing.md](testing.md):
+
+1. The return path is resolved against the request origin, never checked with
+   `startsWith('/')`.
+2. The unlock redirect is a `303`, so the browser never repeats the POST.
+3. The cookie is an HMAC keyed by `SITE_GATE_SECRET`, never the PIN and never
+   an unkeyed hash of it.
+4. Both comparisons are constant-time over equal-length digests.
+5. A body that is not a form is answered with `400`, never thrown to the
+   platform.
+6. The matcher is chosen on purpose, and the unlock path sits outside every
+   locale prefix and app route.
+
+Everything else is the host app's: cookie name, unlock path, strings,
+palette, locale detection, attempt store.
 
 ## Adaptation checklist
 
@@ -229,4 +261,5 @@ the Upstash client both satisfy.
 - [ ] A strings table for every locale the host serves
 - [ ] Locale cookie name and default locale passed in
 - [ ] `:root` palette adjusted to the host's brand, both colour schemes
-- [ ] `SITE_PIN` and `SITE_GATE_SECRET` set in every environment that should be locked — see [operations.md](operations.md)
+- [ ] `SITE_PIN` and `SITE_GATE_SECRET` set in every environment that should be
+      locked, see [operations.md](operations.md)

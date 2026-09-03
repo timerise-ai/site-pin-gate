@@ -1,9 +1,10 @@
 # The module: config, pure helpers, attempt store
 
 Three files with no request object and no framework import in two of them.
-Everything the handler decides — is this cookie valid, is this return path
-safe, has this client used its budget — is a call into here, and every one of
-those calls is unit-tested in [testing.md](testing.md).
+Everything the handler decides, whether the cookie is valid, whether the
+return path is safe, whether the client has used its budget, is a call into
+here, and every one of those calls is unit-tested in
+[testing.md](testing.md).
 
 ## Configuration
 
@@ -12,7 +13,7 @@ those calls is unit-tested in [testing.md](testing.md).
 | `SITE_PIN` | to arm the gate | The PIN. Unset or whitespace disables the gate entirely. Any string; length is the defence, so prefer eight or more characters |
 | `SITE_GATE_SECRET` | strongly recommended | Keys the cookie token. Without it the token is a fingerprint of the PIN alone. Any long random string; rotating it logs everyone out |
 | `SITE_GATE_BRAND` | no | Heading and `<title>` prefix on the gate page. Defaults to "Restricted" |
-| `NODE_ENV` | — | `production` sets the cookie's `Secure` flag |
+| `NODE_ENV` | no | `production` sets the cookie's `Secure` flag |
 
 ```ts
 // file: lib/site-gate/config.ts
@@ -92,8 +93,9 @@ function toHex(bytes: Uint8Array): string {
 /**
  * Derives the opaque cookie token for a PIN. HMAC keyed by `secret`, so the
  * token cannot be reversed to the PIN without the secret. When the host has no
- * secret the PIN doubles as the key — the token is then only as strong as the
- * PIN itself (see operations.md, "The cookie is a fingerprint of the PIN").
+ * secret the PIN doubles as the key, and the token is then only as strong
+ * as the PIN itself (see operations.md, "The cookie is a fingerprint of the
+ * PIN").
  */
 export async function deriveGateToken(
   pin: string,
@@ -206,10 +208,11 @@ export function pickLocale(
 
 ### Why HMAC and not a hash
 
-The source derived the cookie as `SHA-256("<salt>:" + PIN)` with the salt in
-source code. That is not a secret derivation; it is a fingerprint. A PIN drawn
+The earlier implementation derived the cookie as `SHA-256("<salt>:" + PIN)`
+with the salt in source code. That is not a secret derivation; it is a
+fingerprint. A PIN drawn
 from a small space (four to six digits is what people type into a numeric
-field) is recovered from the cookie by hashing every candidate — ten thousand
+field) is recovered from the cookie by hashing every candidate, ten thousand
 SHA-256 calls, a few milliseconds. HMAC keyed by a server-side secret makes
 the cookie useless offline: without the secret there is nothing to brute-force
 against.
@@ -218,7 +221,7 @@ When `SITE_GATE_SECRET` is unset the PIN doubles as the key and the same
 weakness returns. The handler warns once per instance; the fix is one env var.
 
 The message is versioned (`site-gate:v1:`). Bumping the version invalidates
-every issued cookie without changing the PIN — the same effect as rotating the
+every issued cookie without changing the PIN, the same effect as rotating the
 secret, but visible in a diff.
 
 ### Why a constant-time compare
@@ -267,7 +270,7 @@ the client sets it.
  * platform that fans requests across instances an attacker gets `limit`
  * guesses per instance per window, not `limit` in total. That still turns
  * unbounded guessing into a slow crawl; for a hard cap, implement this
- * interface over a shared store (Redis, a database row) — see adaptation.md.
+ * interface over a shared store (Redis, a database row); see adaptation.md.
  */
 export type AttemptStore = {
   /** Records one attempt and returns whether it is within budget. */
@@ -318,7 +321,7 @@ cannot grow memory without limit.
 
 Per instance means per instance. A serverless platform running the gate on
 many instances multiplies the budget by the instance count. For a hard global
-cap, implement the same two-method interface over a shared store — the sketch
+cap, implement the same two-method interface over a shared store; the sketch
 is in [adaptation.md](adaptation.md).
 
 ## Checklist

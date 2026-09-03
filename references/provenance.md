@@ -1,21 +1,21 @@
 # Provenance
 
-Extracted from the temporary site-wide PIN gate of a production Next.js 16
-marketing site — a bilingual (English, Polish) App Router app with next-intl
-locale routing, kept private ahead of launch. The gate was a self-contained
-block of about a hundred lines in `proxy.ts`, run before locale routing: a
-`SITE_PIN` env var, a cookie holding a SHA-256 of the PIN, an inline HTML
-form posting to `/__unlock`. The architecture here is that block's. The
-templates are not a transcription of it — the audit below is why.
+The earlier implementation this module was audited against was a temporary
+site-wide PIN gate on a multi-locale App Router marketing site, kept private
+ahead of its launch: a self-contained block in `proxy.ts`, run before locale
+routing, with a `SITE_PIN` env var, a cookie holding a SHA-256 of the PIN, and
+an inline HTML form posting to `/__unlock`. The architecture here is that
+block's. The templates are not a transcription of it, and the ledger below is
+why.
 
-Every defect marked **verified live** was reproduced with `curl` against the
-source running in a dev server with `SITE_PIN=1234`. The rest were confirmed
-by reading the source and, where a parser is involved, by running the input
-through it.
+Every entry marked **verified live** was reproduced with `curl` against that
+implementation running in a dev server with `SITE_PIN=1234`. The rest were
+confirmed by reading it and, where a parser is involved, by running the input
+through the parser.
 
 ## Fixed in the templates
 
-### 1. The unlock form redirected off-site — verified live
+### 1. The unlock form redirected off-site (verified live)
 
 The return path was accepted if it started with `/`. `//evil.example/x`
 starts with `/`. Posting the correct PIN with that as `next` produced
@@ -27,9 +27,9 @@ domain, and collect them on the other side.
 **Shipped:** `safeReturnPath` resolves the value against the request origin
 and compares origins. See [module.md](module.md).
 
-### 2. The cookie was the PIN in disguise — verified live
+### 2. The cookie was the PIN in disguise (verified live)
 
-The cookie held `SHA-256("<constant>:" + PIN)`, with the constant in source.
+The cookie held `SHA-256("<constant>:" + PIN)`, with the constant in the code.
 Numeric PINs are what a field marked `inputmode="numeric"` invites. A
 ten-thousand-iteration loop recovered the PIN from a captured cookie in
 milliseconds. The comment above the code said the raw PIN "never sits in the
@@ -38,21 +38,21 @@ browser cookie", which was true and beside the point.
 **Shipped:** HMAC-SHA-256 keyed by `SITE_GATE_SECRET`; a warning when the
 secret is absent. See [module.md](module.md).
 
-### 3. A successful unlock re-POSTed the PIN to the landing page — verified live
+### 3. A successful unlock re-POSTed the PIN to the landing page (verified live)
 
 `NextResponse.redirect` defaults to `307`, which preserves method and body.
-The dev server log showed `POST /pl/robot 200` after the unlock — the page
-rendered from a POST carrying `pin=1234` in its body — and with a locale
+The dev server log showed `POST /pl/robot 200` after the unlock: the page
+rendered from a POST carrying `pin=1234` in its body, and with a locale
 redirect chain the body travels once more. Reloading the landing page in a
 browser prompts to resubmit the form.
 
 **Shipped:** `303`. See [handler.md](handler.md).
 
-### 4. A non-form body crashed the proxy — verified live
+### 4. A non-form body crashed the proxy (verified live)
 
 `request.formData()` throws a `TypeError` for any body that is not
-`multipart/form-data` or `application/x-www-form-urlencoded`. The source did
-not catch it; a `POST` with a JSON body returned a 500 page.
+`multipart/form-data` or `application/x-www-form-urlencoded`. It was not
+caught; a `POST` with a JSON body returned a 500 page.
 
 **Shipped:** the parse is wrapped; a bad body is a `400` with the gate page.
 See [handler.md](handler.md).
@@ -73,7 +73,7 @@ Both comparisons short-circuit on the first differing character.
 
 **Shipped:** `constantTimeEqual` over equal-length digests.
 
-### 7. The pages-only matcher published the route list — verified live
+### 7. The pages-only matcher published the route list (verified live)
 
 The matcher excluded `/api` and every path with a dot. Without a cookie,
 `/sitemap.xml` returned 200 and listed every URL of the unlaunched site; the
@@ -89,10 +89,10 @@ pages-only shape is documented as a choice with its consequences. See
 
 **Shipped:** derived once per instance in `createSiteGate`.
 
-### 9. English only, brand hardcoded, on a bilingual site
+### 9. One language, brand hardcoded, on a multi-locale site
 
-The gate page carried the site's brand as a literal and spoke English to Polish visitors whose
-locale cookie was right there in the request.
+The gate page carried the site's brand as a literal and spoke one language to
+every visitor, whose locale cookie was right there in the request.
 
 **Shipped:** a strings table per locale, chosen from the locale cookie and
 `Accept-Language`; brand from an env var. See [adaptation.md](adaptation.md).
@@ -136,26 +136,27 @@ that gets "fixed" into a wrong status. 401 on both is right.
 - **No CSRF token on the form.** There is no per-user state to hijack; a
   forged unlock with the right PIN gains the attacker nothing they do not
   already have.
-- **`inputmode="numeric"` is gone, `type="password"` is in.** The source
-  advertised the PIN's alphabet; a password field does not.
+- **`inputmode="numeric"` is gone, `type="password"` is in.** A numeric input
+  mode advertises the PIN's alphabet; a password field does not.
 
 ## Added
 
-Beyond what the source had, all marked as additions above: the attempt
-budget and `429`, the keyed token and `SITE_GATE_SECRET`, locale selection and
-the strings table, the return-path sanitiser, `400` on a bad body,
-`x-robots-tag`, `Retry-After`, the warn-level log lines, the brand env var,
-and the test suite. The Redis attempt store, the lock endpoint, per-client
-PINs and the bypass header in [operations.md](operations.md) are designs only.
+Designed in the skill and never run in the earlier implementation, all marked
+as additions above: the attempt budget and `429`, the keyed token and
+`SITE_GATE_SECRET`, locale selection and the strings table, the return-path
+sanitiser, `400` on a bad body, `x-robots-tag`, `Retry-After`, the warn-level
+log lines, the brand env var, and the test suite. The Redis attempt store, the
+lock endpoint, per-client PINs and the bypass header in
+[operations.md](operations.md) are designs only.
 
-## If you are porting the original
+## If you are upgrading an existing gate
 
 Fix order, most damaging first:
 
-1. Sanitise the return path (defect 1) — one function, closes a live
+1. Sanitise the return path (defect 1): one function, closes a live
    phishing vector.
 2. Change the unlock redirect to `303` (defect 3).
-3. Key the cookie token with a secret (defect 2) — invalidates every existing
+3. Key the cookie token with a secret (defect 2): invalidates every existing
    cookie, so schedule it.
 4. Wrap `formData()` (defect 4).
 5. Add the attempt budget (defect 5), reusing the host's limiter if it has one.

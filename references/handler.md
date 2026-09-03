@@ -2,27 +2,27 @@
 
 The handler is the only file that knows about `NextRequest`. It is created
 once per server instance so the expected cookie token is derived once and the
-attempt store lives across requests; the source recomputed a digest on every
-request and had no store at all.
+attempt store lives across requests, rather than recomputing a digest on
+every request and keeping no store at all.
 
 ## Behaviour contract
 
 | Request | Response | Headers |
 |---|---|---|
-| Any path, `SITE_PIN` unset | `null` — the app runs | — |
-| Any path, valid cookie | `null` | — |
+| Any path, `SITE_PIN` unset | `null`, the app runs | none |
+| Any path, valid cookie | `null` | none |
 | Any path, no or invalid cookie | `401`, gate page with the request's path and query as the return path | `cache-control: no-store`, `x-robots-tag: noindex, nofollow` |
-| `GET /__unlock` (any non-POST) | `303` to `/` | — |
+| `GET /__unlock` (any non-POST) | `303` to `/` | none |
 | `POST /__unlock`, body is not a form | `400`, gate page, "invalid" message | as 401 |
 | `POST /__unlock`, budget exhausted | `429`, gate page, "too many attempts" | as 401, plus `retry-after` in seconds |
 | `POST /__unlock`, wrong PIN | `401`, gate page, "wrong" message, return path preserved | as 401 |
-| `POST /__unlock`, right PIN | `303` to the sanitised return path | `set-cookie: <name>=<token>; HttpOnly; SameSite=Lax; Secure; Path=/; Max-Age=…` |
+| `POST /__unlock`, right PIN | `303` to the sanitised return path | `set-cookie: <name>=<token>; HttpOnly; SameSite=Lax; Secure; Path=/; Max-Age=...` |
 
 Two things the table encodes that are easy to undo by accident:
 
 - **`303`, not the default `307`.** A 307 tells the browser to repeat the
   request *with the same method and body*. After a form POST that means the
-  PIN is POSTed again to the landing page — and if the host's locale routing
+  PIN is POSTed again to the landing page, and if the host's locale routing
   then redirects `/` to `/en`, POSTed a third time. `303` converts the follow-up
   to a GET.
 - **The budget is charged before the PIN is checked.** Otherwise a client past
@@ -89,7 +89,7 @@ export function renderGatePage(input: GatePageInput): string {
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
 <meta name="robots" content="noindex, nofollow" />
-<title>${escapeHtml(brand)} — ${escapeHtml(strings.title)}</title>
+<title>${escapeHtml(brand)}: ${escapeHtml(strings.title)}</title>
 <style>
   :root {
     color-scheme: light dark;
@@ -153,14 +153,14 @@ Notes on the markup:
 
 - `type="password"` with `autocomplete="one-time-code"` keeps the PIN out of
   the password manager's save prompt while letting iOS offer a pasted code.
-  The source used a text field with `inputmode="numeric"`, which told every
-  visitor the PIN was digits.
+  A text field with `inputmode="numeric"` would instead tell every visitor
+  the PIN is digits.
 - The error paragraph has `role="alert"` and is referenced by
   `aria-describedby` when present, so a screen reader announces the failure.
-- Everything interpolated goes through `escapeHtml` — brand, strings, the
-  return path, the unlock path. The source escaped only `"` in the return
-  path. In an attribute that happened to be enough; the cost of doing it
-  properly is one function.
+- Everything interpolated goes through `escapeHtml`: brand, strings, the
+  return path, the unlock path. Escaping only `"` is enough to stay inside a
+  double-quoted attribute, which is why it survives review; the cost of doing
+  it properly is one function.
 - `color-scheme: light dark` plus two palettes. The page follows the visitor's
   system setting because it has no way to know the app's theme.
 
@@ -217,7 +217,7 @@ export function createSiteGate(overrides: Partial<SiteGateDeps> = {}) {
   };
 
   // The expected token depends only on config, so derive it once and reuse
-  // the promise; the source recomputed a digest on every request.
+  // the promise, rather than recomputing a digest on every request.
   let expectedToken: Promise<string> | undefined;
   let warnedWeakCookie = false;
 
@@ -300,8 +300,8 @@ export function createSiteGate(overrides: Partial<SiteGateDeps> = {}) {
       pin = String(form.get('pin') ?? '').trim();
       next = safeReturnPath(form.get('next'), origin, config.unlockPath);
     } catch {
-      // Not a form body (JSON, empty, wrong content-type). The source let
-      // this throw and answered with a 500 page.
+      // Not a form body (JSON, empty, wrong content-type). Letting this
+      // throw answers with a 500 page instead of a rejected attempt.
       return gatePage(request, '/', 'invalid', 400);
     }
 
@@ -324,7 +324,7 @@ export function createSiteGate(overrides: Partial<SiteGateDeps> = {}) {
 
     await deps.attempts.reset(key);
     // 303 turns the browser's POST into a GET. With the default 307 the
-    // browser re-POSTs the form — PIN included — to the page it lands on.
+    // browser re-POSTs the form, PIN included, to the page it lands on.
     const response = NextResponse.redirect(new URL(next, origin), 303);
     response.cookies.set(config.cookieName, await expected(), {
       httpOnly: true,
@@ -359,7 +359,7 @@ import { createSiteGate } from '@/lib/site-gate/handler';
 // live in this closure.
 const siteGate = createSiteGate();
 
-// Next.js 16 `proxy` convention. On Next.js 13–15 name the file
+// Next.js 16 `proxy` convention. On Next.js 13 to 15 name the file
 // `middleware.ts` and export `middleware` instead; the body is identical.
 export async function proxy(request: NextRequest) {
   const gate = await siteGate(request);
@@ -374,9 +374,9 @@ export const config = {
 };
 ```
 
-For Next 13–15, name the file `middleware.ts` and export `middleware`. To run
+For Next 13 to 15, name the file `middleware.ts` and export `middleware`. To run
 the gate ahead of an existing proxy (locale routing, auth, rewrites), call it
-first and return its response when it gives one — the composed example is in
+first and return its response when it gives one; the composed example is in
 [adaptation.md](adaptation.md).
 
 The `config.matcher` line is the boundary. Read "Choosing the matcher" in
@@ -389,7 +389,7 @@ Once unlocked, the cookie expires after thirty days. If it expires mid-session
 the next client-side navigation fetches an RSC payload and receives the gate
 page instead. Next's router treats a non-RSC response as a signal to perform a
 full navigation to that URL, so the visitor sees the gate rather than a broken
-transition. Not observed under test — stated from the router's documented
+transition. Not observed under test, stated from the router's documented
 behaviour for middleware responses.
 
 ## Checklist

@@ -12,7 +12,7 @@ is a fully open site with no warning anywhere.
 | Environment | `SITE_PIN` | `SITE_GATE_SECRET` | Result |
 |---|---|---|---|
 | Production, pre-launch | set | set | Locked |
-| Production, launched | **unset** | either | Open — this is how you launch |
+| Production, launched | **unset** | either | Open, this is how you launch |
 | Preview / staging | set | set | Locked |
 | Local development | set in `.env.local` when you need to see the gate; otherwise unset | optional | Cookie is sent without `Secure` because `NODE_ENV` is not `production` |
 
@@ -77,8 +77,9 @@ in client code.
 
 With the pages-only matcher (see [adaptation.md](adaptation.md)), also:
 `/api/*`, `sitemap.xml`, `robots.txt`, every generated OG image, and every
-file under `public/`. The source module shipped this way, which meant its
-sitemap listed every route of an unlaunched site to anyone who asked. Choose
+file under `public/`. The earlier implementation shipped this way, which
+meant its sitemap listed every route of an unlaunched site to anyone who
+asked. Choose
 it only when a third party must reach those paths without the cookie, and
 prefer excluding the specific paths.
 
@@ -86,7 +87,7 @@ prefer excluding the specific paths.
 
 The handler writes one `warn` line per failed attempt and one when a client's
 budget is exhausted, each with the client key. It writes one `warn` per
-instance when `SITE_GATE_SECRET` is unset. Successful unlocks are not logged —
+instance when `SITE_GATE_SECRET` is unset. Successful unlocks are not logged;
 add a line if you want an audit trail of who got in; there is no identity to
 record beyond the client key.
 
@@ -106,7 +107,8 @@ Authentication and skip this module.
 
 ## Extensions
 
-Designs, not shipped code. Each is small; none was needed by the source.
+Designs, not shipped code. Each is small; none was needed by the earlier
+implementation.
 
 **A lock endpoint.** A `GET /__lock` that clears the cookie and redirects to
 `/`, for demonstrating the gate or handing a shared laptop back. Ten lines in
@@ -129,7 +131,8 @@ excluding paths, but a second secret to manage.
 
 ## Checklist
 
-- [ ] `SITE_PIN` and `SITE_GATE_SECRET` set in every environment that should be locked, and **unset** where it should be open
+- [ ] `SITE_PIN` and `SITE_GATE_SECRET` set in every environment that should be
+      locked, and **unset** where it should be open
 - [ ] Redeployed after every env change
 - [ ] Smoke checks pass on every environment
 - [ ] `.env.example` lists both variables
