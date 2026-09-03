@@ -4,77 +4,80 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## What this repository is
 
-A **skill package** — markdown only, no application, no build step. It teaches an agent how to put a shared-PIN gate in front of a whole Next.js App Router site from `proxy.ts` (Next 16) or `middleware.ts` (Next 13–15): one env var, one HMAC-derived cookie, a self-contained unlock page, an attempt budget.
+An [Agent Skill](https://agentskills.io) package: markdown only. There is no `package.json` here and nothing
+in this repository executes. It teaches an agent how to put a shared-PIN gate in front of a whole **Next.js
+App Router** site from `proxy.ts` (Next 16) or `middleware.ts` (Next 13 to 15): one env var, one HMAC-derived
+cookie, a self-contained unlock page, an attempt budget.
 
-The skill was extracted from a production module; `references/provenance.md` records the twelve findings from it and how the templates handle each. That file is the rationale layer — read it before "simplifying" anything.
+Keep the two straight: the commands and code in `references/` describe the app the agent will generate, not
+this repository. The `curl` smoke checks and `vercel env add` calls in `operations.md`, the host probe in
+`adaptation.md` and the `vitest` and `bun test` invocations in `testing.md` all run in that generated app.
+The one thing that is checked here is that the templates compile and their tests pass, and that check runs in
+a scratch project; the recipe is under *Editing conventions* below.
 
-## Commands
-
-There is no build, lint, dev server or test runner **in this repo** — there is no `package.json` and nothing here imports anything. The only verification is compiling and running the code blocks, which requires a scratch project because they import `next/server`:
-
-```bash
-S=$(mktemp -d) && cd "$S" && npm init -y >/dev/null
-npm i -D typescript next vitest @types/node @types/react >/dev/null
-mkdir -p lib/site-gate
-# extract every ts block whose first line is `// file: <path>` to that path,
-# from references/{module,handler,testing}.md
-cat > tsconfig.json <<'JSON'
-{"compilerOptions":{"strict":true,"noUncheckedIndexedAccess":true,"noEmit":true,"skipLibCheck":true,
- "target":"ES2022","module":"ESNext","moduleResolution":"bundler","lib":["ES2022","DOM"],
- "types":["node"],"paths":{"@/*":["./*"]}}}
-JSON
-npx tsc --noEmit          # strict + noUncheckedIndexedAccess, must be clean
-bun test lib/site-gate    # 35 tests; bun rewrites the `vitest` import to its own runner
-```
-
-Run a single test file with `bun test lib/site-gate/core.test.ts`, a single case with `bun test -t 'never redirects off-origin'`.
-
-Caveats when extracting:
-
-- `skipLibCheck` is not optional: without it `next`'s own `.d.ts` files fail the check, which says nothing about these templates. `vitest` and `@types/react` are installed for types only. Do not add `baseUrl` — TypeScript 6 removed it; the bare `paths` above is what resolves `@/*`.
-- The five module files (`config.ts`, `core.ts`, `attempts.ts`, `page.ts`, `handler.ts`), the two test files and `proxy.ts` form one coherent project. `proxy.ts` needs the `@/*` path alias above.
-- Three blocks in `adaptation.md` are **variants and sketches**, not part of that project: `proxy-with-i18n.ts` (needs `next-intl` and a host `@/i18n/routing`), `matcher-with-allowlist.ts` (an alternative `config` export), `redis-attempts.ts` (compiles against `./attempts` only). Type-check them separately or not at all; never let them overwrite `proxy.ts`.
-- Re-run the check after editing **any** block. A block is the source of truth for a file that other blocks import.
-
-The host-side commands documented for a *consumer* of this skill — the probe in `adaptation.md`, the `curl` smoke checks and `vercel env add` calls in `operations.md` — are content, not this repo's workflow. Keep them runnable, but they are not run here.
+The skill was written by the engineer who has shipped this module; the earlier implementation it was audited
+against was a temporary gate on a marketing site kept private ahead of its launch. `references/provenance.md`
+is the ledger of that audit: twelve entries on what changed and how the templates verify it, what was kept
+deliberately, and what was designed here and has never run in production. That file is the rationale layer:
+read it before "simplifying" anything.
 
 ## Structure
 
-- `SKILL.md` — entry point. The frontmatter `description` is the trigger surface. The body carries the architecture, critical facts, hard rules, and the **reference directory table** mapping trigger keywords to `references/`.
-- `references/*.md` — one topic per file, loaded on demand. `adaptation.md` (seam contract, matcher, strings) and `module.md` (config + pure helpers + store) are the design entry points; `handler.md` carries the page, the handler and the wiring; `operations.md` the env matrix and smoke checks; `testing.md` the suites; `provenance.md` the audit.
-
-## The architecture the templates describe
-
-Spread across `module.md` and `handler.md`; worth holding in mind before editing either.
-
-```
-proxy.ts ──► siteGate(request) ──► NextResponse to send, or null to continue
-             (handler.ts, one instance per server: expected token derived once,
-              attempt store lives across requests)
-                │
-                ├─ config.ts    readSiteGateConfig(env, overrides) → SiteGateConfig
-                ├─ core.ts      deriveGateToken · constantTimeEqual · safeReturnPath
-                │               escapeHtml · clientKey · pickLocale   (no framework import)
-                ├─ attempts.ts  AttemptStore · createMemoryAttemptStore (seam: Redis)
-                └─ page.ts      renderGatePage · GateStrings · GATE_STRINGS_EN
-```
-
-`handler.ts` is the only file that knows `NextRequest`; everything it *decides* is a call into `core.ts` or `attempts.ts`, which is why those are unit-testable with no request object. The response for every request shape is the **behaviour contract table** at the top of `handler.md` — it is the spec, `handler.test.ts` walks its rows, and a change to one is a change to both.
+- `SKILL.md`: entry point, loaded whole on every activation, so it stays between 130 and 160 lines. The
+  frontmatter `description` is the trigger surface; the body carries the architecture diagram, five **critical
+  facts**, six **hard rules**, the quick-start order, and the **reference directory table** mapping trigger
+  keywords to files.
+- `README.md`: the human-facing front door, in the section order of the skill standard: install, activation,
+  the file table, the six non-negotiables, the *Not this* table, contributing.
+- `references/*.md`: one topic per file, loaded on demand. `adaptation.md` (the seam contract, the matcher,
+  strings) and `module.md` (config, pure helpers, attempt store) are the design entry points; `handler.md`
+  carries the behaviour contract, the page, the handler and the wiring; `operations.md` the env matrix and the
+  smoke checks; `testing.md` the two suites; `provenance.md` the audit.
 
 ## Editing conventions
 
-- **Code blocks are compiled and run.** Every ` ```ts ` block whose first line is `// file: <path>` is extracted into a scratch project (recipe above) and type-checked under `strict` and `noUncheckedIndexedAccess`; the `*.test.ts` blocks run under `bun test`. Keep that first line, keep imports complete, and re-run after editing any block.
-- **Identifiers are shared across files.** `SiteGateConfig`, `readSiteGateConfig`, `SITE_GATE_DEFAULTS`, `deriveGateToken`, `constantTimeEqual`, `safeReturnPath`, `escapeHtml`, `clientKey`, `pickLocale`, `AttemptStore`, `createMemoryAttemptStore`, `GateStrings`, `GATE_STRINGS_EN`, `renderGatePage`, `createSiteGate`, and the env names `SITE_PIN`, `SITE_GATE_SECRET`, `SITE_GATE_BRAND` appear in several references. Rename in all of them or none.
-- **Keep the reference directory in sync** with `references/` — the table in `SKILL.md` and the file table in `README.md` both list every reference. Links are relative: `[x.md](references/x.md)` from SKILL.md, `[x.md](x.md)` between references.
-- **Do not remove the odd-looking parts.** The `303`, the origin comparison in `safeReturnPath`, HMAC instead of a hash, the digest-vs-digest compare, budget charged before the PIN check, inline CSS, `type="password"`, `SameSite=Lax`, the `401` — each is a documented defect or a deliberate choice. Check `provenance.md` first.
-- **Five non-negotiables** are listed in `README.md`. Never present them as optional elsewhere.
-- Additions beyond the source module are marked as such in `provenance.md` ("Added"). New capability goes there, or in `operations.md` under "Extensions" as a design.
+- **Code blocks name their destination on the first line** as a comment, for example
+  `// file: lib/site-gate/core.ts`.
+  That line is what makes a block extractable, so keep it and keep imports complete.
+- **The code blocks are compiled and run.** The blocks in `module.md`, `handler.md` and `testing.md` form one
+  project: extract each to its named path in a scratch directory, then
 
-## Counted claims that must not drift
+  ```bash
+  npm i -D typescript next vitest @types/node @types/react
+  npx tsc --noEmit          # strict, noUncheckedIndexedAccess, skipLibCheck, paths {"@/*": ["./*"]}
+  bun test lib/site-gate    # 35 tests; bun rewrites the `vitest` import to its own runner
+  ```
 
-Several numbers are asserted in prose and are checkable against the files:
-
-- **Twelve findings** — `provenance.md` has twelve numbered entries under "Fixed in the templates"; the count is repeated in `CHANGELOG.md` and at the top of this file. Adding an entry means updating all of them.
-- **35 tests** — claimed in `testing.md` and `CHANGELOG.md`, and it is what `bun test` prints (26 `it` cases plus one `it.each` of nine).
-- **Current release** — `README.md`'s "Current release" line must name the newest `CHANGELOG.md` heading. Releases are Keep a Changelog + SemVer; there is no version field in the `SKILL.md` frontmatter.
-- **What is a design, not shipped code** — `provenance.md` ends by naming them (the Redis store, the lock endpoint, per-client PINs, the bypass header). `adaptation.md` and `operations.md` must keep saying so at each one.
+  `skipLibCheck` is not optional, or Next's own type declarations fail the run and say nothing about these
+  templates. Do not set `baseUrl`, which TypeScript 6 removed; the bare `paths` entry resolves `@/*` for
+  `proxy.ts`. Re-run after editing any block. The three blocks in `adaptation.md` are variants and sketches,
+  not part of that project: `proxy-with-i18n.ts` needs `next-intl` and a host `@/i18n/routing`,
+  `matcher-with-allowlist.ts` is an alternative `config` export, and `redis-attempts.ts` compiles against
+  `./attempts` alone.
+- **Identifiers are shared across files.** `SiteGateConfig`, `readSiteGateConfig`, `SITE_GATE_DEFAULTS`,
+  `deriveGateToken`, `constantTimeEqual`, `safeReturnPath`, `escapeHtml`, `clientKey`, `pickLocale`,
+  `AttemptStore`, `createMemoryAttemptStore`, `GateStrings`, `GATE_STRINGS_EN`, `renderGatePage`,
+  `createSiteGate`, and the env names `SITE_PIN`, `SITE_GATE_SECRET`, `SITE_GATE_BRAND` appear in several
+  references. Rename in all of them or none.
+- **Keep the three tables in sync** with `references/`: the reference directory in `SKILL.md`, the quick-start
+  list in `SKILL.md`, and the file table in `README.md`. Links are relative: `[x.md](references/x.md)` from
+  `SKILL.md`, `[x.md](x.md)` between references.
+- **The behaviour contract is the spec.** The table at the top of `handler.md` states the response for every
+  request shape, `handler.test.ts` walks its rows, and a change to one is a change to both.
+- **Do not remove the odd-looking parts.** The `303`, the origin comparison in `safeReturnPath`, HMAC instead
+  of a bare hash, the digest-against-digest compare, the budget charged before the PIN is checked, the inline
+  CSS, `type="password"`, `SameSite=Lax` and the `401` on both error branches: each is a ledger entry or a
+  documented judgement call. Check `provenance.md` before touching one.
+- **The numbers that remain are load-bearing.** 35 tests, twelve ledger entries, the attempt defaults (5 tries
+  per 15 minutes), the 30-day cookie, the 128-character PIN cap. They were verified against this repository or
+  are design parameters the next implementation needs. Do not restate them loosely and do not add new ones.
+  Figures describing the earlier implementation's deployment do not appear anywhere.
+- **Mark additions as additions.** Anything designed in the skill and never run in the earlier implementation
+  belongs in the "Added" section of `provenance.md`, stated as such, or in `operations.md` under *Extensions*
+  as a design. The skill's credibility is that it distinguishes the two.
+- **Never present the non-negotiables as optional.** The origin-resolved return path, the `303`, the
+  secret-keyed cookie, the constant-time comparisons, the answered non-form body and the deliberate matcher
+  are stated as hard rules in `SKILL.md` and as non-negotiables in `README.md`; keep them that way everywhere.
+- The cookie name `site_access`, the unlock path `/__unlock` and the brand default are meant to be renamed by
+  the host, and `adaptation.md` carries that procedure. The env var names are the operator contract and are
+  not renamed.
