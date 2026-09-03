@@ -5,6 +5,26 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.2.0] - 2026-09-03
+
+### Added
+- A PIN supplied at invocation. `/site-pin-gate 1111` arms the gate with that PIN
+  instead of asking for one: a single bare token is read as the PIN, while more
+  than one token stays a task description, so plain invocations are unchanged.
+  The PIN is named back before use, so a single word meant as a topic is not
+  silently armed as one.
+- The rules that argument carries, read off the existing templates: 1 to 128
+  characters after trimming, a reported strength estimate rather than a refusal
+  for a short PIN, and the PIN written to `.env.local` and nowhere else — never a
+  template, a test, `.env.example` or a commit, and never `SITE_GATE_SECRET`,
+  which stays generated.
+- The invocation contract now lives in three places that move as one: the
+  `## Invocation` table in `SKILL.md`, the activation paragraph in `README.md`,
+  and *A PIN supplied at invocation* in `references/operations.md`.
+
+No template, test or runtime behaviour changed: the gate this skill generates is
+identical to `0.1.0`, so `references/provenance.md` gains no entry.
+
 ## [0.1.0] - 2026-09-03
 
 Initial release of the `site-pin-gate` skill: a shared-PIN gate for a whole Next.js
