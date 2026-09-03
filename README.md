@@ -74,6 +74,10 @@ before launch, locking a preview or staging deployment, adding a coming-soon or 
 an existing gate in `middleware.ts` or `proxy.ts`. Invoke it explicitly with `/site-pin-gate` in Claude Code,
 `$site-pin-gate` in Codex CLI, or from `/skills` in Gemini CLI.
 
+A single bare argument is taken as the PIN: `/site-pin-gate 1111` arms the gate with that PIN, writes it to
+`.env.local` and nowhere else, and reports what a PIN that short is worth. More than one word is read as a
+task description, so `/site-pin-gate audit middleware.ts` still behaves like a plain invocation.
+
 Each host matches a task against the description its own way, so invoke the skill explicitly on a first run
 rather than assuming it fired. Only `SKILL.md` is read up front; the `references/` files load on demand, so
 the
@@ -87,7 +91,7 @@ skill stays cheap in context until a topic is actually needed.
 | `references/adaptation.md` | The seam contract with the host app: proxy versus middleware, the matcher, strings, styling, cookie name, a shared attempt store |
 | `references/module.md` | Config, token derivation, constant-time compare, the return-path sanitiser, the attempt store |
 | `references/handler.md` | The behaviour contract, the gate page, the request handler, the proxy wiring |
-| `references/operations.md` | Env vars per environment, smoke checks, rotation, kill switch, what stays public, extensions |
+| `references/operations.md` | Env vars per environment, a PIN given at invocation, smoke checks, rotation, kill switch, what stays public, extensions |
 | `references/testing.md` | The two test files, 35 tests, and how to run them under vitest or bun |
 | `references/provenance.md` | The engineering ledger: what the audit of the earlier implementation changed and how the templates verify it, what was kept on purpose, and what is new in the skill |
 

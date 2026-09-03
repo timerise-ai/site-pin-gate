@@ -32,6 +32,33 @@ removing either variable; the running functions keep the old values.
 Keep `.env.example` honest: list both variables with empty values and a
 comment that empty means off.
 
+## A PIN supplied at invocation
+
+`/site-pin-gate 1111` supplies `SITE_PIN` directly, and it lands in exactly one
+file. Confirm that file is git-ignored first; `create-next-app` ignores
+`.env*.local` already.
+
+```bash
+grep -n '^SITE_PIN=' .env.local 2>/dev/null   # already set? edit, do not append
+printf 'SITE_PIN=%s\n' '1111' >> .env.local
+printf 'SITE_GATE_SECRET=%s\n' "$(openssl rand -hex 32)" >> .env.local
+```
+
+Single-quote the PIN in the shell so `$` and spaces survive, and quote it in
+the file too if it contains a space or a `#`. Both the env value and the
+submitted one are trimmed, so a PIN with leading or trailing whitespace can
+never be typed back.
+
+Nothing else changes: `.env.example` still lists both names with empty values,
+the deployed environments still take theirs from the platform, and no template,
+test or commit carries the value.
+
+A PIN passed as an argument has been through a shell history and an agent
+transcript before it reached the file. That is fine for local work and for a
+preview nobody has been given yet. Before it guards anything that matters,
+rotate it: one variable, one deploy, and every cookie issued under the old
+PIN dies with it.
+
 ## Smoke checks
 
 Run against every environment after every deploy that touches the gate:
@@ -136,4 +163,6 @@ excluding paths, but a second secret to manage.
 - [ ] Redeployed after every env change
 - [ ] Smoke checks pass on every environment
 - [ ] `.env.example` lists both variables
+- [ ] A PIN given at invocation is in `.env.local` only, and is rotated
+      before it guards production
 - [ ] The team knows that changing the PIN logs everyone out
