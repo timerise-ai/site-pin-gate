@@ -115,21 +115,24 @@ request --> proxy.ts / middleware.ts (the matcher decides what is even seen)
 |---|---|
 | `/site-pin-gate` | Read the task, probe the host, ask for the PIN at step 4 |
 | `/site-pin-gate 1111` | One bare token is **the PIN**: use it as `SITE_PIN`, do not ask |
+| `/site-pin-gate uninstall` | Reserved word, never a PIN: remove the wiring, `lib/site-gate` and the env vars; the site goes public |
 | `/site-pin-gate audit middleware.ts` | More than one token is a task, not a PIN |
 
 Name the PIN back before writing it, so a single word meant as a topic
 ("staging") is not silently armed as one. Trimmed, it must be 1 to 128
 characters: blank arms nothing, and the form caps its field at 128, so a longer
-PIN is a gate no browser can open. Under eight characters is enumerable, and
-`1111` is ten thousand guesses against a budget that is per instance and
-best-effort (fact 4) — use it, say what it is worth, and say that rotating it
-costs one variable and one deploy.
+PIN is a gate no browser can open. Under eight characters is enumerable and
+`1111` is ten thousand guesses against a per-instance, best-effort budget
+(fact 4): use it, say what it is worth, and that rotating it is one deploy.
 
 The PIN goes to `.env.local` and nowhere else: never a template, a test, a
-commit or `.env.example`, and deployed environments still take theirs from the
-platform's env store ([operations.md](references/operations.md)).
-`SITE_GATE_SECRET` is not the argument's business: generate it with
-`openssl rand -hex 32`, never from the PIN.
+commit or `.env.example`; deployed environments take theirs from the platform's
+env store ([operations.md](references/operations.md)). `SITE_GATE_SECRET` is
+not the argument's business: `openssl rand -hex 32`, never derived from the PIN.
+
+`uninstall` is a launch, so confirm the site is meant to be public, then follow
+*Uninstalling* in [operations.md](references/operations.md). To lock again
+later, keep the code and unset `SITE_PIN` instead.
 
 ## Quick start
 
@@ -152,6 +155,6 @@ platform's env store ([operations.md](references/operations.md)).
 | Fitting this into an existing app | adapt, seam, proxy.ts, middleware.ts, matcher, next-intl, cookie name, unlock path, strings, Redis | [adaptation.md](references/adaptation.md) |
 | Config, token, return path, budget | SITE_PIN, SITE_GATE_SECRET, HMAC, constantTimeEqual, safeReturnPath, open redirect, rate limit, x-forwarded-for | [module.md](references/module.md) |
 | The behaviour contract, the page, the handler, the wiring | renderGatePage, createSiteGate, 303, 401, 429, formData, Set-Cookie, x-robots-tag, inline CSS | [handler.md](references/handler.md) |
-| Running it in production | env per environment, PIN at invocation, .env.local, Vercel, rotate PIN, kill switch, smoke test, sitemap, robots, OG image, /api, Deployment Protection, lock endpoint, multiple PINs | [operations.md](references/operations.md) |
+| Running it in production | env per environment, PIN at invocation, .env.local, Vercel, rotate PIN, kill switch, uninstall, remove the gate, launch, smoke test, sitemap, robots, OG image, /api, Deployment Protection, lock endpoint, multiple PINs | [operations.md](references/operations.md) |
 | Proving it | vitest, bun test, NextRequest, test cases | [testing.md](references/testing.md) |
 | The audit ledger: what changed, was kept and was added | provenance, defect, audit, kept deliberately, upgrading an existing gate | [provenance.md](references/provenance.md) |

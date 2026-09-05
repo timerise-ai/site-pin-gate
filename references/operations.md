@@ -91,9 +91,83 @@ table to clear. The same happens if you change `SITE_GATE_SECRET` or bump the
 
 ## Kill switch
 
-Unset `SITE_PIN`, redeploy. The gate becomes a no-op. To remove the code as
-well, delete the `lib/site-gate` directory and the four lines in the proxy;
-nothing else references it.
+Unset `SITE_PIN`, redeploy. The gate becomes a no-op and the code stays, ready
+to lock the site again. This is how you launch. To take the code out as well,
+see *Uninstalling* below.
+
+## Uninstalling
+
+`/site-pin-gate uninstall` removes everything the skill put in the host and
+nothing else. `uninstall` is a reserved word, never a PIN. Prefer the kill
+switch while the gate may be needed again; uninstall once the launch is
+behind you and the module should not stay in the codebase.
+
+**Uninstalling is a launch.** The moment the code is gone, every environment
+is public, the platform's env store included. Say what will be deleted and
+that the site opens, and get a yes before the first removal.
+
+Find the footprint first. The skill added nothing outside what this grep
+finds and the wiring file:
+
+```bash
+grep -rn 'site-gate\|site_access\|__unlock\|SITE_PIN\|SITE_GATE_' \
+  --exclude-dir=node_modules --exclude-dir=.next --exclude-dir=.git .
+git log --oneline -- lib/site-gate proxy.ts middleware.ts src/proxy.ts src/middleware.ts | head
+```
+
+If the host renamed the cookie or the unlock path (see
+[adaptation.md](adaptation.md)), grep for those names too.
+
+Then, in this order:
+
+1. **The wiring.** In `proxy.ts` or `middleware.ts`: the `createSiteGate`
+   import, the module-scope `siteGate` instance and the two-line early return.
+   If the skill created the file and nothing but the gate lives in it, delete
+   the file, `config.matcher` included. If the host had its own proxy, remove
+   only those lines and restore its matcher to what it was before the gate,
+   from git history: the gate's default matcher is wider than most apps need,
+   and left behind it routes every request through the proxy for nothing.
+2. **The module.** Delete the `lib/site-gate` directory (or `src/lib/site-gate`).
+   That takes the two test files and the optional `strings.ts`, `instance.ts`
+   and `redis-attempts.ts` with it; nothing outside the directory imports it
+   except the wiring.
+3. **The env.** Remove `SITE_PIN`, `SITE_GATE_SECRET` and `SITE_GATE_BRAND`
+   from `.env.local` and `.env.example`, then from every environment in the
+   platform's store:
+
+   ```bash
+   vercel env rm SITE_PIN production
+   vercel env rm SITE_PIN preview
+   vercel env rm SITE_GATE_SECRET production
+   vercel env rm SITE_GATE_SECRET preview
+   vercel env ls | grep SITE_   # nothing left, including SITE_GATE_BRAND
+   ```
+
+   The store is the step to be careful about. A `SITE_PIN` left there with no
+   code reading it is a lock an operator will believe is on.
+4. **Anything else the skill touched.** A test-runner include pattern or
+   script added for `lib/site-gate`, and any line added to the host's README,
+   `CLAUDE.md` or `.env.example` comments. Rare: the templates run in the
+   host's runner as they are.
+5. **Redeploy**, then verify:
+
+   ```bash
+   grep -rn 'site-gate\|site_access\|SITE_PIN\|SITE_GATE_' \
+     --exclude-dir=node_modules --exclude-dir=.next --exclude-dir=.git .   # nothing
+   npx tsc --noEmit
+   curl -sI https://preview.example.com/ | head -1   # 200: open, on purpose
+   ```
+
+What is not removed, and why it does not matter:
+
+- **The cookie in visitors' browsers.** `site_access` lives up to thirty days
+  and nothing reads it now, so it is inert. Only if the host reuses the name
+  for something else should it be expired first, with one deploy that sets
+  the cookie to an empty value and `Max-Age=0`.
+- **Shared attempt-store keys.** If the Redis adapter was wired, its keys
+  expire on their own within one window (15 minutes by default).
+- **Git history.** Nothing to scrub: the PIN was only ever in `.env.local`
+  and the platform store, never in a commit.
 
 ## What stays public
 
@@ -166,3 +240,5 @@ excluding paths, but a second secret to manage.
 - [ ] A PIN given at invocation is in `.env.local` only, and is rotated
       before it guards production
 - [ ] The team knows that changing the PIN logs everyone out
+- [ ] After `uninstall`, the grep finds nothing, no `SITE_` variable is left in
+      the platform store, and every environment answers `200` on purpose

@@ -78,6 +78,12 @@ A single bare argument is taken as the PIN: `/site-pin-gate 1111` arms the gate 
 `.env.local` and nowhere else, and reports what a PIN that short is worth. More than one word is read as a
 task description, so `/site-pin-gate audit middleware.ts` still behaves like a plain invocation.
 
+`uninstall` is a reserved word, never a PIN: `/site-pin-gate uninstall` removes everything the skill added to
+the app and nothing else, meaning the wiring in the proxy or middleware, the `lib/site-gate` directory with
+its tests, and the three env vars from `.env.local`, `.env.example` and every environment in the platform's
+store. The site is public on the next deploy, so the skill says what it will delete and confirms before the
+first removal. To lock the site again later, unset `SITE_PIN` and keep the code instead.
+
 Each host matches a task against the description its own way, so invoke the skill explicitly on a first run
 rather than assuming it fired. Only `SKILL.md` is read up front; the `references/` files load on demand, so
 the
@@ -91,7 +97,7 @@ skill stays cheap in context until a topic is actually needed.
 | `references/adaptation.md` | The seam contract with the host app: proxy versus middleware, the matcher, strings, styling, cookie name, a shared attempt store |
 | `references/module.md` | Config, token derivation, constant-time compare, the return-path sanitiser, the attempt store |
 | `references/handler.md` | The behaviour contract, the gate page, the request handler, the proxy wiring |
-| `references/operations.md` | Env vars per environment, a PIN given at invocation, smoke checks, rotation, kill switch, what stays public, extensions |
+| `references/operations.md` | Env vars per environment, a PIN given at invocation, smoke checks, rotation, kill switch, uninstalling, what stays public, extensions |
 | `references/testing.md` | The two test files, 35 tests, and how to run them under vitest or bun |
 | `references/provenance.md` | The engineering ledger: what the audit of the earlier implementation changed and how the templates verify it, what was kept on purpose, and what is new in the skill |
 

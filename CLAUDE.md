@@ -63,9 +63,12 @@ read it before "simplifying" anything.
   list in `SKILL.md`, and the file table in `README.md`. Links are relative: `[x.md](references/x.md)` from
   `SKILL.md`, `[x.md](x.md)` between references.
 - **The invocation contract lives in three places** and moves as one: the `## Invocation` table in
-  `SKILL.md`, the activation paragraph in `README.md`, and *A PIN supplied at invocation* in
-  `operations.md`. A PIN given as an argument is written to `.env.local` and nowhere else: never a
-  template, a test, `.env.example` or a commit, and never `SITE_GATE_SECRET`, which is generated.
+  `SKILL.md`, the activation paragraph in `README.md`, and *A PIN supplied at invocation* plus
+  *Uninstalling* in `operations.md`. A PIN given as an argument is written to `.env.local` and nowhere
+  else: never a template, a test, `.env.example` or a commit, and never `SITE_GATE_SECRET`, which is
+  generated. `uninstall` is a reserved word, never a PIN: it removes only what the skill added (the
+  wiring, `lib/site-gate`, the three env vars in every store), it is a launch, and it confirms before the
+  first removal. Keep the three places agreeing on that.
 - **The behaviour contract is the spec.** The table at the top of `handler.md` states the response for every
   request shape, `handler.test.ts` walks its rows, and a change to one is a change to both.
 - **Do not remove the odd-looking parts.** The `303`, the origin comparison in `safeReturnPath`, HMAC instead
