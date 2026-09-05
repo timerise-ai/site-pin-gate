@@ -5,6 +5,31 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.3.0] - 2026-09-05
+
+### Added
+- An uninstall argument. `/site-pin-gate uninstall` removes everything the skill
+  put in the host app and nothing else: the wiring in `proxy.ts` or
+  `middleware.ts`, the `lib/site-gate` directory with its tests and optional
+  files, and `SITE_PIN`, `SITE_GATE_SECRET` and `SITE_GATE_BRAND` from
+  `.env.local`, `.env.example` and every environment in the platform's store.
+- `uninstall` as a reserved word, never a PIN, so it cannot collide with the
+  single-bare-token PIN argument added in `0.2.0`.
+- The procedure that argument follows, in *Uninstalling* in
+  `references/operations.md`, next to the kill switch it complements. Removing
+  the code opens the site everywhere, so an uninstall is treated as a launch: it
+  states what will be deleted and confirms before the first removal, restores the
+  host's own matcher from git history, and points back to unsetting `SITE_PIN`
+  when the gate may be needed again.
+
+### Changed
+- The invocation contract still moves as one, so the reserved word is stated in
+  all three of its places: the `## Invocation` table in `SKILL.md`, the
+  activation paragraph in `README.md`, and `references/operations.md`.
+
+No template, test or runtime behaviour changed: the gate this skill generates is
+identical to `0.2.0`, so `references/provenance.md` gains no entry.
+
 ## [0.2.0] - 2026-09-03
 
 ### Added
