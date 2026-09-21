@@ -158,3 +158,5 @@ later, keep the code and unset `SITE_PIN` instead.
 | Running it in production | env per environment, PIN at invocation, .env.local, Vercel, rotate PIN, kill switch, uninstall, remove the gate, launch, smoke test, sitemap, robots, OG image, /api, Deployment Protection, lock endpoint, multiple PINs | [operations.md](references/operations.md) |
 | Proving it | vitest, bun test, NextRequest, test cases | [testing.md](references/testing.md) |
 | The audit ledger: what changed, was kept and was added | provenance, defect, audit, kept deliberately, upgrading an existing gate | [provenance.md](references/provenance.md) |
+
+Part of the [Timerise Skills](https://github.com/timerise-ai/skills) index, which lists the sibling skills.
