@@ -97,6 +97,11 @@ The matcher decides what the gate ever sees. Two defensible shapes:
 | `/((?!_next/static\|_next/image\|favicon\\.ico).*)` | Pages, RSC payloads, `/api`, `sitemap.xml`, `robots.txt`, OG images, `public/` files | Build assets only | **Default.** Nothing about the site should be visible |
 | `/((?!api\|_next\|_vercel\|.*\\..*).*)` | Pages and RSC payloads | `/api`, every file with an extension, generated images | Third parties must reach `/api` (webhooks) or a public file, and you accept that the sitemap lists every route |
 
+`/:path*` is not a third shape. Gating `_next/static` keeps nothing from a
+crawler, which never holds the cookie and sees only the `401`, and it sends
+every build asset through the proxy. "Nothing indexed" is the default matcher;
+see *Indexing* in [operations.md](operations.md).
+
 With the default matcher, the site's own `fetch('/api/...')` calls still work:
 the browser sends the gate cookie on same-origin requests. What breaks is
 anything **without** the cookie: a webhook, an uptime probe, a mobile app.

@@ -144,7 +144,8 @@ that gets "fixed" into a wrong status. 401 on both is right.
 Designed in the skill and never run in the earlier implementation, all marked
 as additions above: the attempt budget and `429`, the keyed token and
 `SITE_GATE_SECRET`, locale selection and the strings table, the return-path
-sanitiser, `400` on a bad body, `x-robots-tag`, `Retry-After`, the warn-level
+sanitiser, `400` on a bad body, `x-robots-tag`, `no-store` on the unlock
+redirects, `Retry-After`, the warn-level
 log lines, the brand env var, and the test suite. The Redis attempt store, the
 lock endpoint, per-client PINs and the bypass header in
 [operations.md](operations.md) are designs only.

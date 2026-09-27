@@ -12,11 +12,11 @@ every request and keeping no store at all.
 | Any path, `SITE_PIN` unset | `null`, the app runs | none |
 | Any path, valid cookie | `null` | none |
 | Any path, no or invalid cookie | `401`, gate page with the request's path and query as the return path | `cache-control: no-store`, `x-robots-tag: noindex, nofollow` |
-| `GET /__unlock` (any non-POST) | `303` to `/` | none |
+| `GET /__unlock` (any non-POST) | `303` to `/` | `cache-control: no-store` |
 | `POST /__unlock`, body is not a form | `400`, gate page, "invalid" message | as 401 |
 | `POST /__unlock`, budget exhausted | `429`, gate page, "too many attempts" | as 401, plus `retry-after` in seconds |
 | `POST /__unlock`, wrong PIN | `401`, gate page, "wrong" message, return path preserved | as 401 |
-| `POST /__unlock`, right PIN | `303` to the sanitised return path | `set-cookie: <name>=<token>; HttpOnly; SameSite=Lax; Secure; Path=/; Max-Age=...` |
+| `POST /__unlock`, right PIN | `303` to the sanitised return path | `cache-control: no-store`, `set-cookie: <name>=<token>; HttpOnly; SameSite=Lax; Secure; Path=/; Max-Age=...` |
 
 Two things the table encodes that are easy to undo by accident:
 
@@ -290,7 +290,9 @@ export function createSiteGate(overrides: Partial<SiteGateDeps> = {}) {
 
     // --- the unlock form ---------------------------------------------------
     if (request.method !== 'POST') {
-      return NextResponse.redirect(new URL('/', origin), 303);
+      const response = NextResponse.redirect(new URL('/', origin), 303);
+      response.headers.set('cache-control', 'no-store');
+      return response;
     }
 
     let pin = '';
@@ -326,6 +328,8 @@ export function createSiteGate(overrides: Partial<SiteGateDeps> = {}) {
     // 303 turns the browser's POST into a GET. With the default 307 the
     // browser re-POSTs the form, PIN included, to the page it lands on.
     const response = NextResponse.redirect(new URL(next, origin), 303);
+    // A shared cache must never replay a redirect that carries the cookie.
+    response.headers.set('cache-control', 'no-store');
     response.cookies.set(config.cookieName, await expected(), {
       httpOnly: true,
       sameSite: 'lax',
@@ -396,6 +400,6 @@ behaviour for middleware responses.
 
 - [ ] `createSiteGate()` is called at module scope, not inside the handler
 - [ ] The gate runs before any other logic in the proxy
-- [ ] The unlock redirect is `303`
+- [ ] The unlock redirect is `303`, with `cache-control: no-store`
 - [ ] The matcher excludes only what must be public, by name
 - [ ] `localeCookieName` and `strings` passed when the host has locales

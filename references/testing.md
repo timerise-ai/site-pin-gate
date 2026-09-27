@@ -231,6 +231,7 @@ describe('siteGate', () => {
     const res = await g(post('pin=1234&next=/pl/robot'));
     expect(res?.status).toBe(303);
     expect(res?.headers.get('location')).toBe(ORIGIN + '/pl/robot');
+    expect(res?.headers.get('cache-control')).toBe('no-store');
     const cookie = res?.headers.get('set-cookie') ?? '';
     expect(cookie).toContain('site_access=' + (await deriveGateToken('1234', 's3cret')));
     expect(cookie).toMatch(/HttpOnly/i);
@@ -269,6 +270,7 @@ describe('siteGate', () => {
     const res = await gate({ SITE_PIN: '1234' })(get('/__unlock'));
     expect(res?.status).toBe(303);
     expect(res?.headers.get('location')).toBe(ORIGIN + '/');
+    expect(res?.headers.get('cache-control')).toBe('no-store');
   });
 
   it('exhausts the attempt budget per client and resets it on success', async () => {

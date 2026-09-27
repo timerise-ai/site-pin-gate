@@ -121,8 +121,9 @@ by the suite in `references/testing.md`:
    form-encoded, and an unhandled rejection in the proxy is a stack trace instead of a rejected attempt. The
    400 path is in the suite.
 6. **The matcher is chosen on purpose, and the unlock path sits outside every locale prefix and app route.**
-   Whatever the matcher excludes is public, including the sitemap and OG images unless you say otherwise; a
-   colliding unlock path would never render, because the gate answers it before routing.
+   Whatever the matcher excludes is public, including the sitemap and OG images unless you say otherwise.
+   Build assets stay outside it: gating `_next/static` hides nothing from a crawler, which never holds the
+   cookie. A colliding unlock path would never render, because the gate answers it before routing.
 
 Everything else is the host app's: cookie name, unlock path, strings, palette, locale detection, attempt
 store.

@@ -105,9 +105,9 @@ request --> proxy.ts / middleware.ts (the matcher decides what is even seen)
 > that is not form-encoded, and an unhandled rejection in the proxy is a stack
 > trace instead of a rejected attempt. Answer 400.
 
-> **Never choose the matcher by default, and never mount the unlock path under
-> a locale prefix or an app route.** What the matcher excludes is public; a
-> colliding unlock path would never render, because the gate answers it first.
+> **Never choose the matcher by default, never gate `_next/static`, and never
+> nest the unlock path in a locale or app route.** Exclusions are public, a
+> crawler sees only the 401 anyway, and a colliding unlock path never renders.
 
 ## Invocation
 
