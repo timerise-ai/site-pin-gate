@@ -33,6 +33,13 @@ read it before "simplifying" anything.
   strings) and `module.md` (config, pure helpers, attempt store) are the design entry points; `handler.md`
   carries the behaviour contract, the page, the handler and the wiring; `operations.md` the env matrix and the
   smoke checks; `testing.md` the two suites; `provenance.md` the audit.
+- `evals/`: `prompts.md` holds what an operator types after installing, in their words; the first prompt
+  is the agent eval run before every release. Every other file there is one eval run: measured frontmatter
+  that is never edited, then the notes of the person who ran it. Add a prompt rather than rewording one that
+  has results. The procedure is section 10 of the index's STANDARD.md.
+- `.github/workflows/agent-eval.yml`: the caller of the index's reusable eval workflow, run on every
+  published release and on a maintainer's dispatch. It is the same in every skill and was set up by a
+  maintainer; do not edit it, and never add a trigger on `push` or `pull_request`.
 
 ## Editing conventions
 
@@ -82,6 +89,9 @@ read it before "simplifying" anything.
 - **Mark additions as additions.** Anything designed in the skill and never run in the earlier implementation
   belongs in the "Added" section of `provenance.md`, stated as such, or in `operations.md` under *Extensions*
   as a design. The skill's credibility is that it distinguishes the two.
+- **Evals are not skill content.** A new prompt or an eval result is committed as `chore(evals): ...`,
+  never causes a version bump and never rides in a release commit. The frontmatter of a result file is what
+  was measured and is not edited; a failing run stays committed, and the fix is the next release.
 - **Never present the non-negotiables as optional.** The origin-resolved return path, the `303`, the
   secret-keyed cookie, the constant-time comparisons, the answered non-form body and the deliberate matcher
   are stated as hard rules in `SKILL.md` and as non-negotiables in `README.md`; keep them that way everywhere.

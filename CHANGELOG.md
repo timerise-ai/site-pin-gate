@@ -56,7 +56,7 @@ identical to `0.2.0`, so `references/provenance.md` gains no entry.
   silently armed as one.
 - The rules that argument carries, read off the existing templates: 1 to 128
   characters after trimming, a reported strength estimate rather than a refusal
-  for a short PIN, and the PIN written to `.env.local` and nowhere else — never a
+  for a short PIN, and the PIN written to `.env.local` and nowhere else: never a
   template, a test, `.env.example` or a commit, and never `SITE_GATE_SECRET`,
   which stays generated.
 - The invocation contract now lives in three places that move as one: the

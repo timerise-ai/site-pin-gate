@@ -13,22 +13,18 @@ gate is gone.
 
 **Everything dangerous in a gate lives in the two places it touches the outside world: the return path it
 redirects to, and the cookie it hands out.** The rest is a form and a cookie check. Get those two right and
-one
-shared PIN is a complete answer for the weeks before a launch, a client or investor preview, or a staging
+one shared PIN is a complete answer for the weeks before a launch, a client or investor preview, or a staging
 domain: everyone who should see the site can be told the PIN, and nobody else, crawlers included, sees
-anything
-but a 401 page. It is not user authentication and not per-route authorization, because a shared PIN cannot be
-revoked for one person.
+anything but a 401 page. It is not user authentication and not per-route authorization, because a shared PIN
+cannot be revoked for one person.
 
 This skill was written by the engineer who has shipped this module. The earlier implementation it was audited
 against was a temporary gate on a marketing site kept private ahead of its launch. The templates hold the
 properties a gate has to hold: an unlock that can only return to the site's own origin, a redirect the browser
 follows as a GET so the PIN is never sent twice, a cookie that is opaque to anyone without the server's
-secret,
-comparisons that take the same time whatever the input, a request body that is answered rather than thrown,
-and
-a failed-attempt budget that answers 429. The behaviour contract and the handler suite state each one;
-[`references/provenance.md`](references/provenance.md) has the record.
+secret, comparisons that take the same time whatever the input, a request body that is answered rather than
+thrown, and a failed-attempt budget that answers 429. The behaviour contract and the handler suite state each
+one; [`references/provenance.md`](references/provenance.md) has the record.
 
 ## Install
 
@@ -45,10 +41,8 @@ codex`.
 ### Manual install
 
 Nothing here is Claude-specific: the skill is a plain [Agent Skills](https://agentskills.io) folder,
-`SKILL.md`
-plus markdown references with no file that calls a model, so cloning it into an agent's skills directory is
-all
-an install is. For Claude Code:
+`SKILL.md` plus markdown references with no file that calls a model, so cloning it into an agent's skills
+directory is all an install is. For Claude Code:
 
 ```bash
 git clone https://github.com/timerise-ai/site-pin-gate.git ~/.claude/skills/site-pin-gate
@@ -86,8 +80,7 @@ first removal. To lock the site again later, unset `SITE_PIN` and keep the code 
 
 Each host matches a task against the description its own way, so invoke the skill explicitly on a first run
 rather than assuming it fired. Only `SKILL.md` is read up front; the `references/` files load on demand, so
-the
-skill stays cheap in context until a topic is actually needed.
+the skill stays cheap in context until a topic is actually needed.
 
 ## What's inside
 
@@ -100,32 +93,28 @@ skill stays cheap in context until a topic is actually needed.
 | `references/operations.md` | Env vars per environment, a PIN given at invocation, smoke checks, rotation, kill switch, uninstalling, what stays public, extensions |
 | `references/testing.md` | The two test files, 35 tests, and how to run them under vitest or bun |
 | `references/provenance.md` | The engineering ledger: what the audit of the earlier implementation changed and how the templates verify it, what was kept on purpose, and what is new in the skill |
+| `evals/` | The prompts an operator types after installing (`prompts.md`) and one file per agent eval: the skill installed into an empty Next.js app, one prompt, no help, then type-checked, built and tested |
 
 The seam is the table at the top of `references/adaptation.md`, and it is short because the gate keeps no
-state
-beyond one cookie and one counter: there is no domain vocabulary to rename, no tenant scope and no data
-access.
-The attempt store is the one pluggable dependency, in-memory by default with a shared-store adapter sketched
-for a hard global cap. The matcher, cookie name, unlock path, strings, palette, locale detection and logger
-are
-the host app's, and no template adds a dependency: they import only `next/server` and Web Crypto.
+state beyond one cookie and one counter: there is no domain vocabulary to rename, no tenant scope and no data
+access. The attempt store is the one pluggable dependency, in-memory by default with a shared-store adapter
+sketched for a hard global cap. The matcher, cookie name, unlock path, strings, palette, locale detection and
+logger are the host app's, and no template adds a dependency: they import only `next/server` and Web Crypto.
 
 ## The six non-negotiables
 
 These travel with the module and are never optional. Each is stated as a hard rule in `SKILL.md` and covered
-by
-the suite in `references/testing.md`:
+by the suite in `references/testing.md`:
 
 1. **The return path is resolved against the request origin**, never checked with `startsWith('/')`. A path
    that begins with a slash can still leave the site, so the sanitiser resolves the value and compares
-   origins.
-   Three off-origin cases are in the suite.
-2. **The unlock redirect is a 303.** A 307 tells the browser to repeat the request with its method and
-   body, so the PIN would be posted again to the landing page, and once more through any locale redirect.
-   The status is asserted on the success path.
+   origins. Three off-origin cases are in the suite.
+2. **The unlock redirect is a 303.** A 307 tells the browser to repeat the request with its method and body,
+   so the PIN would be posted again to the landing page, and once more through any locale redirect. The status
+   is asserted on the success path.
 3. **The cookie is an HMAC keyed by a server-side secret**, not the PIN and not an unkeyed hash of it. A
-   cookie an operator can read is a cookie an operator's laptop can leak. A token derived without the
-   secret is rejected in the suite.
+   cookie an operator can read is a cookie an operator's laptop can leak. A token derived without the secret
+   is rejected in the suite.
 4. **Both comparisons are constant-time** over equal-length digests, so neither the PIN check nor the cookie
    check leaks its answer through how long it took.
 5. **A body that is not a form is answered, never thrown.** `request.formData()` rejects anything that is not
@@ -152,18 +141,15 @@ store.
 Issues and pull requests are welcome here. Pure markdown, with no build step, but the code blocks are checked:
 every TypeScript block names its destination on the first line, and the module, handler and test blocks are
 written to compile as one project under `strict` and `noUncheckedIndexedAccess` and to run under `bun test`,
-35
-tests. Claims in this skill are meant to be verifiable: if you change a factual claim, say how you verified
-it,
-whether against the library, the HTTP specification, the URL parser, or a reproduction.
+35 tests. Claims in this skill are meant to be verifiable: if you change a factual claim, say how you verified
+it, whether against the library, the HTTP specification, the URL parser, or a reproduction.
 
 Adding, removing or renaming a file in `references/` means updating the quick start and the reference
-directory
-table in `SKILL.md`, the file table above, and any relative cross-links. Every odd-looking part of the
-templates is there for a reason, and `references/provenance.md` is the ledger that must stay truthful: read it
-before simplifying anything, and add an entry for anything you change. Commits follow Conventional Commits and
-releases follow [STANDARD.md](https://github.com/timerise-ai/skills/blob/main/STANDARD.md) in the index;
-`CLAUDE.md` carries the full editing conventions.
+directory table in `SKILL.md`, the file table above, and any relative cross-links. Every odd-looking part of
+the templates is there for a reason, and `references/provenance.md` is the ledger that must stay truthful:
+read it before simplifying anything, and add an entry for anything you change. Commits follow Conventional
+Commits and releases follow [STANDARD.md](https://github.com/timerise-ai/skills/blob/main/STANDARD.md) in the
+index; `CLAUDE.md` carries the full editing conventions.
 
 ## Part of the Timerise Skills
 
