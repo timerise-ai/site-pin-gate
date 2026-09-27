@@ -33,8 +33,9 @@ An agent that cannot set them, because the deployment is not reachable from
 where it works, says so in its handover: an unset `SITE_PIN` is an open site,
 and `SITE_GATE_SECRET` belongs in every environment that has `SITE_PIN`.
 
-Keep `.env.example` honest: list both variables with empty values and a
-comment that empty means off. Current `create-next-app` ignores `.env*`, which
+Keep `.env.example` honest: list all three, `SITE_PIN`, `SITE_GATE_SECRET`
+and `SITE_GATE_BRAND`, with empty values and a comment that an empty
+`SITE_PIN` means off. Current `create-next-app` ignores `.env*`, which
 catches `.env.example` too; add `!.env.example` to `.gitignore` so it is
 committed, and check that `.env.local` is still ignored after.
 
@@ -55,9 +56,13 @@ the file too if it contains a space or a `#`. Both the env value and the
 submitted one are trimmed, so a PIN with leading or trailing whitespace can
 never be typed back.
 
-Nothing else changes: `.env.example` still lists both names with empty values,
+Nothing else changes: `.env.example` still lists the three names with empty values,
 the deployed environments still take theirs from the platform, and no template,
 test or commit carries the value.
+
+With no PIN given, write none: no `.env.local`, and no development PIN made
+up for a smoke check and left behind. A PIN nobody chose is a gate nobody can
+open; smoke-test with a throwaway value in the command's environment instead.
 
 A PIN passed as an argument has been through a shell history and an agent
 transcript before it reached the file. That is fine for local work and for a
@@ -253,7 +258,7 @@ excluding paths, but a second secret to manage.
       locked, and **unset** where it should be open
 - [ ] Redeployed after every env change
 - [ ] Smoke checks pass on every environment
-- [ ] `.env.example` lists both variables
+- [ ] `.env.example` lists all three variables, empty
 - [ ] A PIN given at invocation is in `.env.local` only, and is rotated
       before it guards production
 - [ ] The team knows that changing the PIN logs everyone out

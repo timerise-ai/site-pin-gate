@@ -113,7 +113,7 @@ request --> proxy.ts / middleware.ts (the matcher decides what is even seen)
 
 | Invocation | Meaning |
 |---|---|
-| `/site-pin-gate` | Read the task, probe the host, ask for the PIN at step 4 |
+| `/site-pin-gate` | Read the task, probe the host, ask for the PIN at step 4; unanswered, write no PIN anywhere |
 | `/site-pin-gate 1111` | One bare token is **the PIN**: use it as `SITE_PIN`, do not ask |
 | `/site-pin-gate uninstall` | Reserved word, never a PIN: remove the wiring, `lib/site-gate` and the env vars; the site goes public |
 | `/site-pin-gate audit middleware.ts` | More than one token is a task, not a PIN |

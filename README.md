@@ -70,7 +70,9 @@ an existing gate in `middleware.ts` or `proxy.ts`. Invoke it explicitly with `/s
 
 A single bare argument is taken as the PIN: `/site-pin-gate 1111` arms the gate with that PIN, writes it to
 `.env.local` and nowhere else, and reports what a PIN that short is worth. More than one word is read as a
-task description, so `/site-pin-gate audit middleware.ts` still behaves like a plain invocation.
+task description, so `/site-pin-gate audit middleware.ts` still behaves like a plain invocation. With no PIN
+given and nobody to ask, the skill writes no PIN anywhere, not even a development one in `.env.local`, and
+hands over that the site is public until `SITE_PIN` is set.
 
 `uninstall` is a reserved word, never a PIN: `/site-pin-gate uninstall` removes everything the skill added to
 the app and nothing else, meaning the wiring in the proxy or middleware, the `lib/site-gate` directory with
