@@ -5,6 +5,30 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.3.3] - 2026-09-27
+
+Fix release, from reading the prompt-1 agent eval runs against 0.3.2.
+
+### Fixed
+
+- The in-memory attempt store is now bounded under a flood of live keys. Pruning
+  only dropped expired keys, so distinct client keys arriving inside one window
+  grew the map past `maxKeys` and re-scanned it on every hit. At the cap it now
+  evicts the oldest key, and it prunes only when a new key arrives. The module
+  prose no longer claims a bound the code did not keep.
+- The agent eval workflow caller passes the dispatched prompt number as a number,
+  so a manual run is no longer refused before a job starts.
+
+### Added
+
+- A test that evicts the oldest key when every key is live; the suite is 36 tests.
+- `operations.md` says to un-ignore `.env.example`, which the `.env*` rule in
+  current `create-next-app` catches, and gains an *Indexing* section on why the
+  default matcher already keeps a gated site out of search indexes and the matcher
+  should not be widened to build assets for that.
+- `testing.md` says a host with no runner gets `vitest` as a dev dependency, rather
+  than a rewritten import or a hand-rolled `expect` shim.
+
 ## [0.3.2] - 2026-09-27
 
 Documentation release. The skill content is unchanged from 0.3.1.
