@@ -5,6 +5,32 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.3.6] - 2026-09-27
+
+Security fix release, from scoring the prompt-1 agent eval runs against 0.3.5.
+
+### Security
+
+- `safeReturnPath` let an off-origin return path through. `/a/..//evil.example`
+  starts with one slash and resolves to the request origin, but its normalised
+  pathname is `//evil.example`, which the unlock redirect resolved to another
+  host. A phishing link could carry anyone who knows the PIN off-site. The
+  sanitiser now resolves its result once more and collapses anything that
+  leaves the origin. Update the template in any app built from 0.3.5 or earlier.
+
+### Added
+
+- Two dot-segment cases in the `safeReturnPath` suite and one in the handler's
+  off-origin test; the suite is 38 tests.
+
+### Changed
+
+- The return-path hard rule in `SKILL.md` and the non-negotiable in the README
+  name the dot-segment case. `provenance.md` records it under ledger entry 1.
+- `handler.md` says the wiring is the whole of `proxy.ts`: no lazy
+  initialisation, no `503` when `SITE_GATE_SECRET` is missing, and no cookie
+  format pre-check.
+
 ## [0.3.5] - 2026-09-27
 
 Fix release, from scoring the prompt-1 agent eval runs against 0.3.4.
