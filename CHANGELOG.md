@@ -5,6 +5,23 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.3.5] - 2026-09-27
+
+Fix release, from scoring the prompt-1 agent eval runs against 0.3.4.
+
+### Changed
+
+- The quick start tells an agent to copy the default matcher verbatim; only a
+  path the task names as public changes it. `adaptation.md` says the same, and
+  says that dropping an exclusion is an unreviewed matcher shape.
+- The quick start and `testing.md` say to install `vitest` with
+  `npm i -D vitest` when the host has no runner: the package registry is not an
+  external service. The suite runs unmodified, never converted to `node:assert`
+  or run through a hand-rolled runner.
+- The quick start and `operations.md` make both variables part of the handover
+  when the agent cannot set them: an unset `SITE_PIN` is an open site, and
+  `SITE_GATE_SECRET` belongs wherever `SITE_PIN` is.
+
 ## [0.3.4] - 2026-09-27
 
 Fix release, from reading the prompt-1 agent eval runs against 0.3.3.
