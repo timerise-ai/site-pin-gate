@@ -5,6 +5,25 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.3.4] - 2026-09-27
+
+Fix release, from reading the prompt-1 agent eval runs against 0.3.3.
+
+### Changed
+
+- The matcher hard rule in `SKILL.md` and the matcher non-negotiable in the
+  README now say to keep `_next/static` outside the matcher. Gating build assets
+  hides nothing from a crawler, which never holds the cookie and sees only the
+  `401`. `adaptation.md` says outright that `/:path*` is not a third matcher option.
+
+### Fixed
+
+- Both `303` redirects from the unlock path, the non-POST one and the one that
+  sets the cookie, now send `cache-control: no-store`, so a shared cache cannot
+  replay the redirect that carries the cookie. The behaviour contract, the
+  handler, its checklist and the handler suite agree; the suite is still 36 tests.
+  `provenance.md` lists it under *Added*.
+
 ## [0.3.3] - 2026-09-27
 
 Fix release, from reading the prompt-1 agent eval runs against 0.3.2.
