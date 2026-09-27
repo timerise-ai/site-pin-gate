@@ -13,7 +13,7 @@ npx vitest run lib/site-gate      # vitest
 bun test lib/site-gate            # bun
 ```
 
-They were verified under `bun test` and `vitest run` (36 tests) and
+They were verified under `bun test` and `vitest run` (38 tests) and
 type-checked under `strict` and `noUncheckedIndexedAccess`. `next/server` must
 be resolvable, and it is, in any Next.js app.
 
@@ -56,6 +56,8 @@ describe('safeReturnPath', () => {
     '//evil.example/x',
     '/\\evil.example',
     '///evil.example',
+    '/a/..//evil.example',
+    '/.//evil.example/x',
     'https://evil.example',
     'javascript:alert(1)',
     '',
@@ -245,7 +247,7 @@ describe('siteGate', () => {
 
   it('never redirects off-origin after unlock', async () => {
     const g = gate({ SITE_PIN: '1234' });
-    for (const next of ['//evil.example/x', '/\\evil.example', 'https://evil.example']) {
+    for (const next of ['//evil.example/x', '/\\evil.example', '/a/..//evil.example', 'https://evil.example']) {
       const res = await g(post(`pin=1234&next=${encodeURIComponent(next)}`));
       expect(res?.headers.get('location')).toBe(ORIGIN + '/');
     }

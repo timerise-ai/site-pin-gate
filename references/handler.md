@@ -383,6 +383,14 @@ the gate ahead of an existing proxy (locale routing, auth, rewrites), call it
 first and return its response when it gives one; the composed example is in
 [adaptation.md](adaptation.md).
 
+The wiring is the whole of `proxy.ts`; keep it this small. Do not initialise
+the gate lazily (the module is evaluated per server instance, not at build),
+answer `503` when `SITE_GATE_SECRET` is missing (the handler warns once and
+still gates; see [operations.md](operations.md)), or pre-check the cookie's
+format (`constantTimeEqual` already handles any length). A hardening you think
+the templates lack belongs in the templates and their tests, not in a
+wrapper around them.
+
 The `config.matcher` line is the boundary. Read "Choosing the matcher" in
 [adaptation.md](adaptation.md) before changing it; the pages-only matcher the
 source used left the sitemap, the OG images and the API public.

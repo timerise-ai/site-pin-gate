@@ -87,8 +87,8 @@ request --> proxy.ts / middleware.ts (the matcher decides what is even seen)
 ## Hard rules
 
 > **Never validate a return path with `startsWith('/')`.** `//evil.example`,
-> `/\evil.example` and `///evil.example` all pass it and all leave the site.
-> Resolve the value against the request origin and compare origins.
+> `/\evil.example` and `/a/..//evil.example` all pass it and all leave the site.
+> Resolve it against the request origin, compare origins, then check the result again.
 
 > **Never answer a successful form POST with a 307.** The browser repeats the
 > request with its method and body, so the PIN is posted again to the page it

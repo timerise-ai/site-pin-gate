@@ -27,6 +27,13 @@ domain, and collect them on the other side.
 **Shipped:** `safeReturnPath` resolves the value against the request origin
 and compares origins. See [module.md](module.md).
 
+**Added in 0.3.6:** the resolved path is resolved once more before it is
+returned. Dot segments normalise `/a/..//evil.example` to the pathname
+`//evil.example`, which passed every earlier check and which the unlock
+redirect resolved to `https://evil.example/`. An agent eval against 0.3.5
+found it; the suite now carries two dot-segment cases, and the handler test
+posts one with the right PIN.
+
 ### 2. The cookie was the PIN in disguise (verified live)
 
 The cookie held `SHA-256("<constant>:" + PIN)`, with the constant in the code.

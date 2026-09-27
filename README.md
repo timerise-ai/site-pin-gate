@@ -91,7 +91,7 @@ the skill stays cheap in context until a topic is actually needed.
 | `references/module.md` | Config, token derivation, constant-time compare, the return-path sanitiser, the attempt store |
 | `references/handler.md` | The behaviour contract, the gate page, the request handler, the proxy wiring |
 | `references/operations.md` | Env vars per environment, a PIN given at invocation, smoke checks, rotation, kill switch, uninstalling, what stays public, extensions |
-| `references/testing.md` | The two test files, 36 tests, and how to run them under vitest or bun |
+| `references/testing.md` | The two test files, 38 tests, and how to run them under vitest or bun |
 | `references/provenance.md` | The engineering ledger: what the audit of the earlier implementation changed and how the templates verify it, what was kept on purpose, and what is new in the skill |
 | `evals/` | The prompts an operator types after installing (`prompts.md`) and one file per agent eval: the skill installed into an empty Next.js app, one prompt, no help, then type-checked, built and tested |
 
@@ -107,8 +107,9 @@ These travel with the module and are never optional. Each is stated as a hard ru
 by the suite in `references/testing.md`:
 
 1. **The return path is resolved against the request origin**, never checked with `startsWith('/')`. A path
-   that begins with a slash can still leave the site, so the sanitiser resolves the value and compares
-   origins. Three off-origin cases are in the suite.
+   that begins with a slash can still leave the site, even after one resolve (`/a/..//evil.example`
+   normalises to `//evil.example`), so the sanitiser resolves the value, compares origins and checks the
+   result again. Five off-origin path cases are in the suite.
 2. **The unlock redirect is a 303.** A 307 tells the browser to repeat the request with its method and body,
    so the PIN would be posted again to the landing page, and once more through any locale redirect. The status
    is asserted on the success path.
@@ -142,7 +143,7 @@ store.
 Issues and pull requests are welcome here. Pure markdown, with no build step, but the code blocks are checked:
 every TypeScript block names its destination on the first line, and the module, handler and test blocks are
 written to compile as one project under `strict` and `noUncheckedIndexedAccess` and to run under `bun test`,
-36 tests. Claims in this skill are meant to be verifiable: if you change a factual claim, say how you verified
+38 tests. Claims in this skill are meant to be verifiable: if you change a factual claim, say how you verified
 it, whether against the library, the HTTP specification, the URL parser, or a reproduction.
 
 Adding, removing or renaming a file in `references/` means updating the quick start and the reference

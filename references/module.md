@@ -136,7 +136,9 @@ export function constantTimeEqual(a: string, b: string): boolean {
  * Normalises the "return to" path carried by the unlock form. Anything that is
  * not a same-origin path collapses to "/". `startsWith('/')` alone is not a
  * check: `//evil.example`, `/\evil.example` and `///evil.example` all pass it
- * and all resolve to another host.
+ * and all resolve to another host. Nor is one resolve: dot segments normalise
+ * `/a/..//evil.example` to the pathname `//evil.example`, which the redirect
+ * would resolve to another host, so the result is resolved once more.
  */
 export function safeReturnPath(
   raw: unknown,
@@ -155,7 +157,10 @@ export function safeReturnPath(
   }
   if (url.origin !== origin) return '/';
   if (url.pathname === unlockPath) return '/'; // never bounce back into the form
-  return url.pathname + url.search; // drops any fragment and credentials
+  const path = url.pathname + url.search; // drops any fragment and credentials
+  // The redirect resolves this path again; it must still land on this origin.
+  if (new URL(path, origin).origin !== origin) return '/';
+  return path;
 }
 
 const HTML_ESCAPES: Record<string, string> = {
