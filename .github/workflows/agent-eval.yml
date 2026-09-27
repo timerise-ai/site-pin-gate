@@ -44,5 +44,6 @@ jobs:
     uses: timerise-ai/skills/.github/workflows/agent-eval.yml@main
     with:
       agent: ${{ inputs.agent }}
-      prompt: ${{ inputs.prompt }}
+      # A dispatch input arrives as a string; the reusable workflow's prompt is a number.
+      prompt: ${{ fromJSON(inputs.prompt) }}
     secrets: inherit
