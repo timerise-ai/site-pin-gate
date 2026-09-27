@@ -29,6 +29,10 @@ openssl rand -hex 32                    # a fine SITE_GATE_SECRET
 Env changes take effect on the **next deployment**. Redeploy after setting or
 removing either variable; the running functions keep the old values.
 
+An agent that cannot set them, because the deployment is not reachable from
+where it works, says so in its handover: an unset `SITE_PIN` is an open site,
+and `SITE_GATE_SECRET` belongs in every environment that has `SITE_PIN`.
+
 Keep `.env.example` honest: list both variables with empty values and a
 comment that empty means off. Current `create-next-app` ignores `.env*`, which
 catches `.env.example` too; add `!.env.example` to `.gitignore` so it is

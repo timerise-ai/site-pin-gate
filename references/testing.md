@@ -18,9 +18,13 @@ type-checked under `strict` and `noUncheckedIndexedAccess`. `next/server` must
 be resolvable, and it is, in any Next.js app.
 
 A host with no test runner gets `vitest` as a dev dependency and a
-`"test": "vitest run"` script. Do not rewrite the `vitest` import or hand-roll
-an `expect` shim over `node:test` to avoid the install: the suite is the
-behaviour contract, and it should run as written.
+`"test": "vitest run"` script: run `npm i -D vitest`. The package registry is
+not an external service in the sense of "no external services are reachable";
+that phrase is about the app's runtime credentials. Do not pass `--offline`,
+search the npm cache for a copy, rewrite the `vitest` import, convert the
+assertions to `node:assert` or hand-roll a runner: the suite is the behaviour
+contract, and it should run as written. If the install genuinely fails, run
+`bun test` when bun is present, and otherwise report the tests as not run.
 
 ## Helpers and store
 

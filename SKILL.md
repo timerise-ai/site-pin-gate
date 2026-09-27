@@ -136,17 +136,17 @@ later, keep the code and unset `SITE_PIN` instead.
 
 ## Quick start
 
-1. Probe the host and fill in the seam table:
-   [adaptation.md](references/adaptation.md).
-2. Copy the config, pure helpers and attempt store:
-   [module.md](references/module.md).
+1. Probe the host and fill in the seam table: [adaptation.md](references/adaptation.md).
+2. Copy the config, pure helpers and attempt store: [module.md](references/module.md).
 3. Copy the page renderer and the handler, wire them into `proxy.ts` or
-   `middleware.ts`, and choose the matcher: [handler.md](references/handler.md).
+   `middleware.ts` with the default matcher verbatim; only a path the task names
+   as public changes it: [handler.md](references/handler.md).
 4. Set `SITE_PIN` (the invocation's PIN, if one was given) and
-   `SITE_GATE_SECRET` per environment, then run the smoke checks:
-   [operations.md](references/operations.md).
-5. Run the shipped tests in the host's runner:
-   [testing.md](references/testing.md).
+   `SITE_GATE_SECRET` per environment and run the smoke checks. Whatever you
+   cannot set, hand over: unset `SITE_PIN` is an open site, and
+   `SITE_GATE_SECRET` belongs wherever `SITE_PIN` is: [operations.md](references/operations.md).
+5. Run the shipped tests unmodified; with no runner, `npm i -D vitest` (the
+   package registry is not an external service): [testing.md](references/testing.md).
 
 ## Reference directory
 

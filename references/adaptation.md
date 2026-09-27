@@ -97,7 +97,10 @@ The matcher decides what the gate ever sees. Two defensible shapes:
 | `/((?!_next/static\|_next/image\|favicon\\.ico).*)` | Pages, RSC payloads, `/api`, `sitemap.xml`, `robots.txt`, OG images, `public/` files | Build assets only | **Default.** Nothing about the site should be visible |
 | `/((?!api\|_next\|_vercel\|.*\\..*).*)` | Pages and RSC payloads | `/api`, every file with an extension, generated images | Third parties must reach `/api` (webhooks) or a public file, and you accept that the sitemap lists every route |
 
-`/:path*` is not a third shape. Gating `_next/static` keeps nothing from a
+Copy the chosen matcher verbatim. Adding an exclusion (`_next/image`,
+`favicon.ico`, `api/...`) makes a path public and needs a reason the task
+names; dropping one, as in `/((?!_next/static).*)`, is an unreviewed third
+shape that buys nothing. `/:path*` is not a third shape either. Gating `_next/static` keeps nothing from a
 crawler, which never holds the cookie and sees only the `401`, and it sends
 every build asset through the proxy. "Nothing indexed" is the default matcher;
 see *Indexing* in [operations.md](operations.md).
