@@ -296,7 +296,12 @@ export function createMemoryAttemptStore(
 
   return {
     hit(key, now = Date.now()) {
-      if (store.size >= maxKeys) prune(now); // bound memory under a key flood
+      if (!store.has(key) && store.size >= maxKeys) {
+        prune(now); // bound memory under a key flood
+        // Every key is still live: evict the oldest rather than grow past the cap.
+        const oldest = store.keys().next().value;
+        if (store.size >= maxKeys && oldest !== undefined) store.delete(oldest);
+      }
       const live = (store.get(key) ?? []).filter(ts => now - ts < windowMs);
       if (live.length >= limit) {
         store.set(key, live);
@@ -316,8 +321,11 @@ export function createMemoryAttemptStore(
 Five attempts per fifteen minutes per client, then `429` with `Retry-After`.
 A successful unlock resets the client's budget so a typo does not lock out the
 person who knows the PIN. The map is bounded: at `maxKeys` entries it prunes
-expired ones before admitting a new key, so a flood of spoofed client keys
-cannot grow memory without limit.
+expired ones before admitting a new key and, if every key is still live,
+evicts the oldest, so a flood of spoofed client keys cannot grow memory past
+the cap. Pruning alone is not a bound: ten thousand keys hit within one window
+are all live. Eviction costs the budget nothing, because a client that can mint
+keys already gets a fresh budget with each one.
 
 Per instance means per instance. A serverless platform running the gate on
 many instances multiplies the budget by the instance count. For a hard global

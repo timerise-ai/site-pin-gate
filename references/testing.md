@@ -13,9 +13,14 @@ npx vitest run lib/site-gate      # vitest
 bun test lib/site-gate            # bun
 ```
 
-They were verified under `bun test` (35 tests) and type-checked under
-`strict` and `noUncheckedIndexedAccess`. `next/server` must be resolvable, and
-it is, in any Next.js app.
+They were verified under `bun test` and `vitest run` (36 tests) and
+type-checked under `strict` and `noUncheckedIndexedAccess`. `next/server` must
+be resolvable, and it is, in any Next.js app.
+
+A host with no test runner gets `vitest` as a dev dependency and a
+`"test": "vitest run"` script. Do not rewrite the `vitest` import or hand-roll
+an `expect` shim over `node:test` to avoid the install: the suite is the
+behaviour contract, and it should run as written.
 
 ## Helpers and store
 
@@ -117,6 +122,14 @@ describe('createMemoryAttemptStore', () => {
     store.hit('b', 0);
     expect(store.hit('c', 500)).toBe(true); // a and b pruned, c admitted
     expect(store.hit('a', 501)).toBe(true); // a was forgotten, so it is fresh
+  });
+  it('evicts the oldest key when every key is still live', () => {
+    const store = createMemoryAttemptStore(1, 1000, 2);
+    store.hit('a', 0);
+    store.hit('b', 1);
+    expect(store.hit('c', 2)).toBe(true); // a evicted, c admitted
+    expect(store.hit('b', 3)).toBe(false); // b kept, still spent
+    expect(store.hit('a', 4)).toBe(true); // a was forgotten, so it is fresh
   });
 });
 

@@ -155,7 +155,7 @@ later, keep the code and unset `SITE_PIN` instead.
 | Fitting this into an existing app | adapt, seam, proxy.ts, middleware.ts, matcher, next-intl, cookie name, unlock path, strings, Redis | [adaptation.md](references/adaptation.md) |
 | Config, token, return path, budget | SITE_PIN, SITE_GATE_SECRET, HMAC, constantTimeEqual, safeReturnPath, open redirect, rate limit, x-forwarded-for | [module.md](references/module.md) |
 | The behaviour contract, the page, the handler, the wiring | renderGatePage, createSiteGate, 303, 401, 429, formData, Set-Cookie, x-robots-tag, inline CSS | [handler.md](references/handler.md) |
-| Running it in production | env per environment, PIN at invocation, .env.local, Vercel, rotate PIN, kill switch, uninstall, remove the gate, launch, smoke test, sitemap, robots, OG image, /api, Deployment Protection, lock endpoint, multiple PINs | [operations.md](references/operations.md) |
+| Running it in production | env per environment, PIN at invocation, .env.local, .env.example, Vercel, rotate PIN, kill switch, uninstall, remove the gate, launch, smoke test, sitemap, robots, noindex, OG image, /api, Deployment Protection, lock endpoint, multiple PINs | [operations.md](references/operations.md) |
 | Proving it | vitest, bun test, NextRequest, test cases | [testing.md](references/testing.md) |
 | The audit ledger: what changed, was kept and was added | provenance, defect, audit, kept deliberately, upgrading an existing gate | [provenance.md](references/provenance.md) |
 

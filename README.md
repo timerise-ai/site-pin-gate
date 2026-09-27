@@ -91,7 +91,7 @@ the skill stays cheap in context until a topic is actually needed.
 | `references/module.md` | Config, token derivation, constant-time compare, the return-path sanitiser, the attempt store |
 | `references/handler.md` | The behaviour contract, the gate page, the request handler, the proxy wiring |
 | `references/operations.md` | Env vars per environment, a PIN given at invocation, smoke checks, rotation, kill switch, uninstalling, what stays public, extensions |
-| `references/testing.md` | The two test files, 35 tests, and how to run them under vitest or bun |
+| `references/testing.md` | The two test files, 36 tests, and how to run them under vitest or bun |
 | `references/provenance.md` | The engineering ledger: what the audit of the earlier implementation changed and how the templates verify it, what was kept on purpose, and what is new in the skill |
 | `evals/` | The prompts an operator types after installing (`prompts.md`) and one file per agent eval: the skill installed into an empty Next.js app, one prompt, no help, then type-checked, built and tested |
 
@@ -141,7 +141,7 @@ store.
 Issues and pull requests are welcome here. Pure markdown, with no build step, but the code blocks are checked:
 every TypeScript block names its destination on the first line, and the module, handler and test blocks are
 written to compile as one project under `strict` and `noUncheckedIndexedAccess` and to run under `bun test`,
-35 tests. Claims in this skill are meant to be verifiable: if you change a factual claim, say how you verified
+36 tests. Claims in this skill are meant to be verifiable: if you change a factual claim, say how you verified
 it, whether against the library, the HTTP specification, the URL parser, or a reproduction.
 
 Adding, removing or renaming a file in `references/` means updating the quick start and the reference

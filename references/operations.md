@@ -30,13 +30,15 @@ Env changes take effect on the **next deployment**. Redeploy after setting or
 removing either variable; the running functions keep the old values.
 
 Keep `.env.example` honest: list both variables with empty values and a
-comment that empty means off.
+comment that empty means off. Current `create-next-app` ignores `.env*`, which
+catches `.env.example` too; add `!.env.example` to `.gitignore` so it is
+committed, and check that `.env.local` is still ignored after.
 
 ## A PIN supplied at invocation
 
 `/site-pin-gate 1111` supplies `SITE_PIN` directly, and it lands in exactly one
 file. Confirm that file is git-ignored first; `create-next-app` ignores
-`.env*.local` already.
+`.env*` (older versions `.env*.local`) already.
 
 ```bash
 grep -n '^SITE_PIN=' .env.local 2>/dev/null   # already set? edit, do not append
@@ -183,6 +185,17 @@ meant its sitemap listed every route of an unlaunched site to anyone who
 asked. Choose
 it only when a third party must reach those paths without the cookie, and
 prefer excluding the specific paths.
+
+## Indexing
+
+"Search engines must not index anything" is already met by the default
+matcher. Every gated response is a `401` with `x-robots-tag: noindex, nofollow`
+and the page's robots meta, and a crawler never holds the cookie, so it sees
+nothing else. Unlocked responses need no extra header: adding one to
+`NextResponse.next()` is harmless, but only people who know the PIN ever see it.
+Do not widen the matcher to `/:path*` for indexing's sake: build chunks are
+referenced only from gated HTML, and gating them sends every asset request
+through the proxy and past the CDN cache.
 
 ## What the logs show
 

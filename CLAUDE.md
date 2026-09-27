@@ -52,7 +52,7 @@ read it before "simplifying" anything.
   ```bash
   npm i -D typescript next vitest @types/node @types/react
   npx tsc --noEmit          # strict, noUncheckedIndexedAccess, skipLibCheck, paths {"@/*": ["./*"]}
-  bun test lib/site-gate    # 35 tests; bun rewrites the `vitest` import to its own runner
+  bun test lib/site-gate    # 36 tests; bun rewrites the `vitest` import to its own runner
   ```
 
   `skipLibCheck` is not optional, or Next's own type declarations fail the run and say nothing about these
@@ -82,7 +82,7 @@ read it before "simplifying" anything.
   of a bare hash, the digest-against-digest compare, the budget charged before the PIN is checked, the inline
   CSS, `type="password"`, `SameSite=Lax` and the `401` on both error branches: each is a ledger entry or a
   documented judgement call. Check `provenance.md` before touching one.
-- **The numbers that remain are load-bearing.** 35 tests, twelve ledger entries, the attempt defaults (5 tries
+- **The numbers that remain are load-bearing.** 36 tests, twelve ledger entries, the attempt defaults (5 tries
   per 15 minutes), the 30-day cookie, the 128-character PIN cap. They were verified against this repository or
   are design parameters the next implementation needs. Do not restate them loosely and do not add new ones.
   Figures describing the earlier implementation's deployment do not appear anywhere.
