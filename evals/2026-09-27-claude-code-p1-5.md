@@ -22,3 +22,7 @@ isolated: true
 timedOut: false
 runUrl: https://github.com/timerise-ai/site-pin-gate/actions/runs/36336014895
 ---
+
+Rubric 8/8. Templates and tests as shipped, vitest installed and running 36 tests, the default matcher,
+`.env.example` un-ignored, and a handover that says an unset `SITE_PIN` is public and that
+`SITE_GATE_SECRET` belongs wherever `SITE_PIN` is set.
