@@ -5,6 +5,19 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.3.2] - 2026-09-27
+
+Documentation release. The skill content is unchanged from 0.3.1.
+
+### Changed
+
+- The README file table and `CLAUDE.md` list `evals/`, the prompts an operator
+  types after installing and one file per agent eval run, as the skills standard
+  now asks. `CLAUDE.md` adds that evals are committed as `chore(evals)` and never
+  bump the version, and describes the agent eval workflow caller.
+- README paragraphs that broke mid-sentence are rewrapped to 110 columns, with the
+  wording unchanged.
+
 ## [0.3.1] - 2026-09-21
 
 Wording release. The skill content is unchanged from 0.3.0.
