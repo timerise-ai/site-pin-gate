@@ -22,3 +22,7 @@ isolated: true
 timedOut: false
 runUrl: https://github.com/timerise-ai/site-pin-gate/actions/runs/36337078718
 ---
+
+Rubric 8/8. Templates and tests as shipped (38 tests under vitest), the default matcher, `.env.example`
+with the three variables and un-ignored, and a handover naming both variables. It smoke-tested with a
+throwaway PIN it wrote to no file.
