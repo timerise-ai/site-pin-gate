@@ -1,5 +1,16 @@
 # Provenance
 
+## Sources
+
+| | Source | What it contributed |
+|---|---|---|
+| A | A temporary gate on a multi-locale marketing site, audited before the skill was written | The architecture, and the twelve-entry ledger below |
+| B | The skill applied, from 0.3.1, to the staging site of a multi-vendor marketplace: an existing proxy doing session refresh and CSP, nine UI locales including Arabic, and inbound webhooks from payment, KYC, email, tracking, video and helpdesk providers | The locale resolver and text-direction seams, the bypass list, the machine-caller inventory, and the operations notes in *Applied to a second host* below |
+
+Unless an entry says otherwise, it comes from source A.
+
+## Source A
+
 The earlier implementation this module was audited against was a temporary
 site-wide PIN gate on a multi-locale App Router marketing site, kept private
 ahead of its launch: a self-contained block in `proxy.ts`, run before locale
@@ -157,10 +168,62 @@ log lines, the brand env var, and the test suite. The Redis attempt store, the
 lock endpoint, per-client PINs and the bypass header in
 [operations.md](operations.md) are designs only.
 
+From source B, built and smoke-tested there but not yet run armed: the
+locale resolver and text-direction seams, the bypass list, and the browser-run
+unlock in [operations.md](operations.md), which is a sketch.
+
+## Applied to a second host (source B)
+
+Source B was built from the templates rather than audited, so what it adds
+is what the templates did not anticipate, not defects in an earlier gate. It
+was smoke-tested on a production build with a throwaway PIN before its own
+environment was armed; the results are marked.
+
+- **Its proxy already had a matcher, and other jobs on it.** Session refresh
+  and a CSP nonce ran on almost every path, webhooks included. Replacing that
+  matcher to suit the gate would have broken them, so the gate was skipped in
+  code for a list of public prefixes. **Shipped:** the bypass-list variant and
+  its edge rule in [adaptation.md](adaptation.md). **Verified on B's build:**
+  pages answered `401`; `/healthz` and an API route `200`; an unsigned payment
+  webhook reached its route and got the route's own signature error.
+- **The reason for the gate was the webhooks.** The client asked for platform
+  password protection; that would have refused every provider callback and
+  every cron trigger called by URL, each needing a bypass secret re-registered
+  with the provider. **Shipped:** the comparison row and paragraph in
+  [operations.md](operations.md), and the machine-caller inventory in the host
+  probe.
+- **`pickLocale` could not reach a script-subtagged locale.** `zh-CN` has base
+  `zh`, which never matches `zh-Hans`, and the page had no text direction for
+  Arabic. B already had a negotiation function with those aliases. **Shipped:**
+  `resolveLocale` and `localeDir` on `createSiteGate`, `dir` on the page, and
+  two handler tests. **Verified on B's build:** `NEXT_LOCALE=ar` rendered
+  `<html lang="ar" dir="rtl">`. Kept: `pickLocale` stays the default for hosts
+  without their own negotiation.
+- **`translate="no"` on the page and `dir="ltr"` on the PIN field.** B's app
+  already opted out of browser translation; a gate page offered for
+  translation, or a PIN field laid out right to left, is noise. **Shipped**
+  in the page template.
+- **The host's test runner defaulted to `jsdom`.** The suites need Node for
+  `NextRequest` and `crypto.subtle`. **Shipped:** the
+  `// @vitest-environment node` note in [testing.md](testing.md).
+- **Staging was the *Production* environment of a separate project.** Setting
+  the variables on *Preview* would have armed nothing. **Shipped:** a
+  paragraph in *Arming it, per environment*.
+- **B was built from a stale installed copy.** The installed skill was 0.3.1
+  while the repository was at 0.3.7, so B shipped without the 0.3.3 key-cap
+  eviction, the 0.3.4 `no-store` on the unlock redirects and the 0.3.6
+  dot-segment fix to `safeReturnPath`: a live open redirect, closed before the
+  PIN was set. The ported tests failed on B's code and passed after.
+  **Shipped:** *An app built from an older copy of this skill* in
+  [operations.md](operations.md), and item 0 of the fix order below.
+
 ## If you are upgrading an existing gate
 
 Fix order, most damaging first:
 
+0. If the gate was built from this skill, read the changelog's *Security* and
+   *Fixed* entries since that version first; a gate built before 0.3.6 has
+   the dot-segment redirect.
 1. Sanitise the return path (defect 1): one function, closes a live
    phishing vector.
 2. Change the unlock redirect to `303` (defect 3).

@@ -2,20 +2,20 @@
 name: site-pin-gate
 description: >
   Put a shared-PIN gate in front of an entire Next.js site from the
-  proxy/middleware layer: one env var arms it, a self-contained unlock page
-  sets an HMAC-derived HttpOnly cookie, and the app behind it stays untouched.
-  Use when: (1) a pre-launch, staging, client-preview or investor-preview site
-  must be hidden from the public and from crawlers without adding user
-  accounts, (2) an existing PIN or password gate in middleware.ts or proxy.ts
-  needs auditing, (3) the user mentions: site PIN, password-protect the site,
-  access code, pre-launch gate, coming-soon lock, staging password, SITE_PIN,
-  "hide the site behind a PIN", "lock the preview deployment", "temporary
-  password page". Carries the return path resolved against the request origin,
+  proxy/middleware layer: one env var arms it, a self-contained unlock page sets
+  an HMAC-derived HttpOnly cookie, and the app behind it stays untouched. Use
+  when: (1) a pre-launch, staging, client-preview or investor-preview site must
+  be hidden from the public and from crawlers without adding user accounts, (2)
+  an existing PIN or password gate in middleware.ts or proxy.ts needs auditing,
+  (3) the user mentions: site PIN, password-protect the site, access code,
+  pre-launch gate, coming-soon lock, staging password, SITE_PIN, "hide the site
+  behind a PIN", "lock the preview deployment", "temporary password page", "keep
+  webhooks working". Carries the return path resolved against the request origin,
   the 303 unlock redirect, the cookie token keyed by a server-side secret,
   constant-time comparisons, an attempt budget answering 429 with Retry-After,
   and the suite that holds them. Next.js App Router, proxy.ts or middleware.ts;
-  the attempt store is a seam, so a shared store can replace the in-memory one.
-  Not user authentication and not per-route authorization.
+  the attempt store, locale resolver and a webhook bypass list are seams. Not
+  user auth, not per-route authorization.
 ---
 
 # Site PIN gate: one PIN in front of the whole site
@@ -45,7 +45,7 @@ should see it can be told one PIN. The gate sits in `proxy.ts` (Next 16) or
 |---|---|
 | Real users with real accounts | the host's auth (Clerk, NextAuth, Supabase Auth); a shared PIN cannot be revoked for one person |
 | Per-route or per-tenant authorization | the host's authorization layer; this gate is all-or-nothing by path matcher |
-| Only preview deployments, on Vercel, for team members | Vercel Deployment Protection, which needs no code; see [operations.md](references/operations.md) |
+| Only previews, on Vercel, for team members, with no webhooks to receive | Vercel Deployment Protection, which needs no code; see [operations.md](references/operations.md) |
 | Protecting an API consumed by machines | an API key; a cookie and an HTML form are the wrong shape |
 
 ## Architecture
@@ -71,10 +71,10 @@ request --> proxy.ts / middleware.ts (the matcher decides what is even seen)
 1. **An unset PIN is an open site, silently.** The most likely production
    failure is the env var set in one environment and not another. Smoke-test
    every environment; the check is one `curl`.
-2. **The matcher is the security boundary.** Whatever it excludes is public.
-   Build assets always are; the sitemap, `robots.txt`, OG images and `/api` are
-   public only if you exclude them, and a pages-only matcher publishes the route
-   list of an unlaunched site through `sitemap.xml`.
+2. **The matcher is the security boundary,** or the bypass list beside a shared
+   one. Whatever it excludes is public. Build assets always are; the sitemap,
+   `robots.txt`, OG images and `/api` only if you exclude them, and a pages-only
+   matcher publishes the route list of an unlaunched site through `sitemap.xml`.
 3. **The cookie is a bearer token derived from the PIN.** Rotating the PIN logs
    every browser out with no store to clear. Without `SITE_GATE_SECRET` it is a
    plain fingerprint of the PIN, and a leaked cookie is then a leaked PIN.
@@ -152,11 +152,11 @@ later, keep the code and unset `SITE_PIN` instead.
 
 | Scenario | Trigger keywords | Reference |
 |---|---|---|
-| Fitting this into an existing app | adapt, seam, proxy.ts, middleware.ts, matcher, next-intl, cookie name, unlock path, strings, Redis | [adaptation.md](references/adaptation.md) |
+| Fitting this into an existing app | adapt, seam, proxy.ts, middleware.ts, matcher, shared proxy, bypass list, webhooks, cron, next-intl, resolveLocale, RTL, dir, cookie name, unlock path, strings, Redis | [adaptation.md](references/adaptation.md) |
 | Config, token, return path, budget | SITE_PIN, SITE_GATE_SECRET, HMAC, constantTimeEqual, safeReturnPath, open redirect, rate limit, x-forwarded-for | [module.md](references/module.md) |
 | The behaviour contract, the page, the handler, the wiring | renderGatePage, createSiteGate, 303, 401, 429, formData, Set-Cookie, x-robots-tag, inline CSS | [handler.md](references/handler.md) |
-| Running it in production | env per environment, PIN at invocation, .env.local, .env.example, Vercel, rotate PIN, kill switch, uninstall, remove the gate, launch, smoke test, sitemap, robots, noindex, OG image, /api, Deployment Protection, lock endpoint, multiple PINs | [operations.md](references/operations.md) |
-| Proving it | vitest, bun test, NextRequest, test cases | [testing.md](references/testing.md) |
+| Running it in production | env per environment, PIN at invocation, .env.local, .env.example, Vercel, rotate PIN, kill switch, uninstall, remove the gate, launch, smoke test, sitemap, robots, noindex, OG image, /api, Deployment Protection, lock endpoint, multiple PINs, password protection blocks webhooks, Playwright, older copy | [operations.md](references/operations.md) |
+| Proving it | vitest, bun test, jsdom, NextRequest, test cases | [testing.md](references/testing.md) |
 | The audit ledger: what changed, was kept and was added | provenance, defect, audit, kept deliberately, upgrading an existing gate | [provenance.md](references/provenance.md) |
 
 Part of the [Timerise Skills](https://github.com/timerise-ai/skills) index, which lists the sibling skills.

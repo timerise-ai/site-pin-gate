@@ -18,7 +18,9 @@ a scratch project; the recipe is under *Editing conventions* below.
 The skill was written by the engineer who has shipped this module; the earlier implementation it was audited
 against was a temporary gate on a marketing site kept private ahead of its launch. `references/provenance.md`
 is the ledger of that audit: twelve entries on what changed and how the templates verify it, what was kept
-deliberately, and what was designed here and has never run in production. That file is the rationale layer:
+deliberately, and what was designed here and has never run in production. It also records a second source:
+the skill applied to a marketplace's staging site, which added the locale resolver, the text-direction seam and
+the bypass list, and showed what an app built from a stale installed copy misses. That file is the rationale layer:
 read it before "simplifying" anything.
 
 ## Structure
@@ -52,19 +54,21 @@ read it before "simplifying" anything.
   ```bash
   npm i -D typescript next vitest @types/node @types/react
   npx tsc --noEmit          # strict, noUncheckedIndexedAccess, skipLibCheck, paths {"@/*": ["./*"]}
-  bun test lib/site-gate    # 38 tests; bun rewrites the `vitest` import to its own runner
+  bun test lib/site-gate    # 40 tests; bun rewrites the `vitest` import to its own runner
   ```
 
   `skipLibCheck` is not optional, or Next's own type declarations fail the run and say nothing about these
   templates. Do not set `baseUrl`, which TypeScript 6 removed; the bare `paths` entry resolves `@/*` for
-  `proxy.ts`. Re-run after editing any block. The three blocks in `adaptation.md` are variants and sketches,
+  `proxy.ts`. Re-run after editing any block. The blocks in `adaptation.md` are variants and sketches,
   not part of that project: `proxy-with-i18n.ts` needs `next-intl` and a host `@/i18n/routing`,
-  `matcher-with-allowlist.ts` is an alternative `config` export, and `redis-attempts.ts` compiles against
-  `./attempts` alone.
+  `matcher-with-allowlist.ts` is an alternative `config` export, `proxy-with-bypass.ts` compiles against
+  the project (test `isGatePublicPath` at its edges after editing it), `instance-with-host-locale.ts` needs a
+  host `@/lib/i18n/negotiate`, and `redis-attempts.ts` compiles against `./attempts` alone. The
+  `e2e/unlock.setup.ts` block in `operations.md` is a Playwright sketch.
 - **Identifiers are shared across files.** `SiteGateConfig`, `readSiteGateConfig`, `SITE_GATE_DEFAULTS`,
   `deriveGateToken`, `constantTimeEqual`, `safeReturnPath`, `escapeHtml`, `clientKey`, `pickLocale`,
   `AttemptStore`, `createMemoryAttemptStore`, `GateStrings`, `GATE_STRINGS_EN`, `renderGatePage`,
-  `createSiteGate`, and the env names `SITE_PIN`, `SITE_GATE_SECRET`, `SITE_GATE_BRAND` appear in several
+  `createSiteGate`, `resolveLocale`, `localeDir`, `isGatePublicPath`, and the env names `SITE_PIN`, `SITE_GATE_SECRET`, `SITE_GATE_BRAND` appear in several
   references. Rename in all of them or none.
 - **Keep the three tables in sync** with `references/`: the reference directory in `SKILL.md`, the quick-start
   list in `SKILL.md`, and the file table in `README.md`. Links are relative: `[x.md](references/x.md)` from
@@ -82,7 +86,7 @@ read it before "simplifying" anything.
   of a bare hash, the digest-against-digest compare, the budget charged before the PIN is checked, the inline
   CSS, `type="password"`, `SameSite=Lax` and the `401` on both error branches: each is a ledger entry or a
   documented judgement call. Check `provenance.md` before touching one.
-- **The numbers that remain are load-bearing.** 38 tests, twelve ledger entries, the attempt defaults (5 tries
+- **The numbers that remain are load-bearing.** 40 tests, twelve ledger entries, the attempt defaults (5 tries
   per 15 minutes), the 30-day cookie, the 128-character PIN cap. They were verified against this repository or
   are design parameters the next implementation needs. Do not restate them loosely and do not add new ones.
   Figures describing the earlier implementation's deployment do not appear anywhere.

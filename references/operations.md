@@ -29,6 +29,11 @@ openssl rand -hex 32                    # a fine SITE_GATE_SECRET
 Env changes take effect on the **next deployment**. Redeploy after setting or
 removing either variable; the running functions keep the old values.
 
+Set them on the environment the gated domain is actually served from. A
+staging site is often the *Production* environment of a separate staging
+project, not the *Preview* environment of the main one; `vercel env add ...
+preview` there arms nothing.
+
 An agent that cannot set them, because the deployment is not reachable from
 where it works, says so in its handover: an unset `SITE_PIN` is an open site,
 and `SITE_GATE_SECRET` belongs in every environment that has `SITE_PIN`.
@@ -79,6 +84,8 @@ H=https://preview.example.com
 curl -sI $H/                 | head -1        # 401 expected while locked
 curl -sI $H/sitemap.xml      | head -1        # 401 with the default matcher
 curl -sI $H/api/health       | head -1        # whatever you decided for it
+curl -s -o /dev/null -w '%{http_code}\n' -X POST $H/api/webhooks/stripe -d '{}'
+                                              # the route's own error, not the gate page
 curl -sI -X POST $H/__unlock -H 'content-type: application/x-www-form-urlencoded' \
      --data 'pin=WRONG&next=/' | head -1      # 401, not 500
 ```
@@ -221,12 +228,53 @@ record beyond the client key.
 | Who can enter | Anyone with the PIN | Members of the Vercel team | Anyone with the password |
 | Covers | Whatever the matcher covers, in any environment | Preview deployments (production optional) | Preview and production |
 | Cost | None | Included on all plans | Paid add-on on Pro; included on Enterprise |
+| Webhooks, cron triggers by URL, polled feeds | Reachable through the matcher or bypass list, unchanged | Blocked with `401` | Blocked with `401` |
 | Localised page | Yes, your strings | No | No |
 | Removal | Unset an env var | A dashboard toggle | A dashboard toggle |
+
+Platform protection sits in front of the whole deployment, so every caller
+without a browser session is refused: payment and KYC webhooks, email-event
+callbacks, cron routes triggered by URL, a calendar provider polling
+an ICS feed. Each then needs the platform's automation-bypass secret appended
+to its URL, re-registered with every provider, and providers that cannot send
+custom headers leave only the query parameter. On a staging site that receives
+webhooks, that reconfiguration is usually the reason to choose this gate: it
+hides the pages and leaves the machine callers where they were.
 
 Check current plan details before relying on the cost row. If the site is on
 Vercel, the audience is the team, and only previews need hiding, use Vercel
 Authentication and skip this module.
+
+## Automated browser runs
+
+A Playwright or Cypress suite pointed at a gated environment sees the gate
+page on its first navigation. Unlock once per run, before the first test,
+and reuse the browser's storage state:
+
+```ts
+// file: e2e/unlock.setup.ts
+import { test as setup } from '@playwright/test';
+
+setup('unlock the site gate', async ({ page }) => {
+  await page.goto('/');
+  await page.getByLabel('Access PIN').fill(process.env.SITE_PIN ?? '');
+  await page.getByRole('button', { name: 'Unlock' }).click();
+  await page.context().storageState({ path: 'e2e/.auth/site-gate.json' });
+});
+```
+
+Keep the PIN in the CI secret store, not in the test file, and expect a
+`429` if a misconfigured run retries a wrong PIN five times.
+
+## An app built from an older copy of this skill
+
+The templates in an app are a snapshot of the skill on the day they were
+copied, and an installed skill can lag its repository. Before arming a gate
+built a while ago, read the *Security* and *Fixed* entries of the skill's
+changelog since that version and port them with their tests; the fix order is
+at the end of [provenance.md](provenance.md). One case has happened already:
+an app built from 0.3.1 carried the dot-segment open redirect fixed in 0.3.6
+until it was ported.
 
 ## Extensions
 
@@ -257,7 +305,9 @@ excluding paths, but a second secret to manage.
 - [ ] `SITE_PIN` and `SITE_GATE_SECRET` set in every environment that should be
       locked, and **unset** where it should be open
 - [ ] Redeployed after every env change
-- [ ] Smoke checks pass on every environment
+- [ ] Smoke checks pass on every environment, a webhook path answered by the
+      route and not by the gate
+- [ ] Browser suites against a gated environment unlock first, PIN from CI secrets
 - [ ] `.env.example` lists all three variables, empty
 - [ ] A PIN given at invocation is in `.env.local` only, and is rotated
       before it guards production

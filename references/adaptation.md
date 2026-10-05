@@ -10,10 +10,11 @@ attempt counter.
 |---|---|---|---|
 | Secrets | `SITE_PIN`, `SITE_GATE_SECRET`, `SITE_GATE_BRAND` env vars | Its env management, per environment | `readSiteGateConfig` in `config.ts` |
 | Entry point | `createSiteGate()` + a `proxy.ts` template | `proxy.ts` (Next 16) or `middleware.ts` (Next 13 to 15), and whatever it already runs there | [handler.md](handler.md) |
-| Matcher | "everything but build assets" | Its own exclusions: webhooks, health checks, an already-public API | `config.matcher` |
+| Matcher | "everything but build assets" | Its own exclusions: webhooks, health checks, an already-public API | `config.matcher`; a bypass list in the proxy when the matcher already serves other jobs |
 | Cookie name, unlock path | `site_access`, `/__unlock` | Names that collide with nothing; the unlock path outside any locale prefix | `SITE_GATE_DEFAULTS`, or `readSiteGateConfig(env, overrides)` |
 | Strings | `GateStrings` type, English table | One table per locale it serves | `createSiteGate({ strings })` |
-| Locale detection | Locale cookie, then `Accept-Language`, then default | Its locale cookie name and default locale | `createSiteGate({ localeCookieName, defaultLocale })` |
+| Locale detection | Locale cookie, then `Accept-Language`, then default | Its locale cookie name and default locale, or its own negotiation function | `createSiteGate({ localeCookieName, defaultLocale })` or `createSiteGate({ resolveLocale })` |
+| Text direction | Left-to-right | Which of its locales are right-to-left | `createSiteGate({ localeDir })` |
 | Styling | Inline CSS on custom properties, `data-site-gate` hooks | Its palette in the `:root` block; nothing else | `renderGatePage` in `page.ts` |
 | Attempt store | In-memory, per instance | A shared store (Redis, a table) for a hard global cap | `createSiteGate({ attempts })` |
 | Logging | `console.warn` | Its logger, if it has one | `createSiteGate({ log })` |
@@ -29,8 +30,21 @@ ls src/proxy.ts src/middleware.ts proxy.ts middleware.ts 2>/dev/null   # which c
 grep -n "matcher" src/proxy.ts src/middleware.ts proxy.ts middleware.ts 2>/dev/null
 grep -rn "NEXT_LOCALE\|localeCookie" src/i18n src/proxy.ts 2>/dev/null | head -3   # locale cookie name
 grep -rn "rate-limit\|rateLimit\|ratelimit" src/lib 2>/dev/null | head -3         # an attempt store to reuse?
+grep -rln "negotiate\|acceptLanguage\|accept-language" src/lib src/i18n lib i18n 2>/dev/null | head -3   # locale negotiation to reuse?
+# Machine callers: everything here must stay reachable without the cookie.
+ls -d app/api/*/ src/app/api/*/ 2>/dev/null                                       # webhooks, cron, health, a public API
+grep -n "crons\|path:" vercel.ts vercel.json 2>/dev/null | head                   # scheduled requests
+find app src/app -name route.ts -not -path "*/api/*" 2>/dev/null                  # feeds and callbacks outside /api
 cat CLAUDE.md AGENTS.md 2>/dev/null | head -60
 ```
+
+Write the machine callers down before choosing the matcher: provider
+webhooks (payments, KYC, email events, tracking, video, helpdesk, calendar
+push), cron paths and any manual trigger URL for them, health probes, and
+feeds a third party polls, such as an ICS calendar feed. None of them holds
+the cookie. A browser redirect does: an auth callback, a payment return or a
+link in an email reaches the gate in the visitor's own browser, and after the
+PIN the unlock returns to the same path with its query, so those stay gated.
 
 Then read the existing proxy or middleware end to end. The gate goes **first**
 in it, before locale routing, before auth, before rewrites, because every
@@ -119,6 +133,50 @@ export const config = {
 };
 ```
 
+## When the proxy's matcher is shared
+
+A host that already has a proxy usually runs it on nearly every path, for a
+session refresh, a CSP nonce or a request id, and its webhooks need that
+proxy as much as its pages do. Narrowing that matcher to suit the gate breaks
+the other jobs. Keep the host's matcher, and skip the gate in code for the
+machine-caller paths from the probe:
+
+```ts
+// file: proxy-with-bypass.ts
+import { type NextRequest, NextResponse } from 'next/server';
+
+import { createSiteGate } from '@/lib/site-gate/handler';
+
+const siteGate = createSiteGate();
+
+// Callers that cannot type a PIN. Prefixes end in `/`, so `/apix` stays gated.
+const PUBLIC_PREFIXES = ['/api/', '/calendar/feed/'] as const;
+const PUBLIC_PATHS = new Set(['/api', '/healthz']);
+
+export function isGatePublicPath(pathname: string): boolean {
+  return (
+    PUBLIC_PATHS.has(pathname) ||
+    PUBLIC_PREFIXES.some(prefix => pathname.startsWith(prefix))
+  );
+}
+
+export async function proxy(request: NextRequest) {
+  if (!isGatePublicPath(request.nextUrl.pathname)) {
+    const gate = await siteGate(request);
+    if (gate) return gate;
+  }
+  // ...the host's own proxy logic, unchanged
+  return NextResponse.next();
+}
+```
+
+The bypass list is then the security boundary instead of the matcher, with
+the same rule: every entry is public, and each needs a reason. Opening all of
+`/api` is defensible only when every route under it enforces its own auth;
+otherwise list the webhook and cron prefixes one by one. Test the list with
+its edges: a bypassed path, its bare prefix, and a sibling such as `/apix`
+that must stay gated.
+
 `_next/static` is always public. Client-component code and any string in it
 can be read by whoever knows a chunk URL; the chunk URLs are only referenced
 from gated HTML, but they are not secret. Do not put secrets in client code
@@ -149,7 +207,37 @@ export const GATE_STRINGS: Record<string, GateStrings> = {
 };
 ```
 
-Pass it as `createSiteGate({ strings: GATE_STRINGS })`. The page's `lang`
+Pass it as `createSiteGate({ strings: GATE_STRINGS })`.
+
+### A host that negotiates locales itself
+
+`pickLocale` matches a tag or its base language. That misses script subtags:
+a browser sending `zh-CN` has base `zh`, which is not `zh-Hans`. A host with
+its own negotiation (profile language, aliases, an enabled-locale list) should
+hand it to the gate instead, and say which locales are right-to-left:
+
+```ts
+// file: lib/site-gate/instance-with-host-locale.ts
+import { negotiateLocale, localeDir } from '@/lib/i18n/negotiate';
+
+import { createSiteGate } from './handler';
+import { GATE_STRINGS } from './strings';
+
+export const siteGate = createSiteGate({
+  strings: GATE_STRINGS,
+  defaultLocale: 'en',
+  resolveLocale: request =>
+    negotiateLocale({
+      cookieLocale: request.cookies.get('NEXT_LOCALE')?.value,
+      acceptLanguage: request.headers.get('accept-language'),
+    }),
+  localeDir, // 'rtl' for ar, he, fa, ur
+});
+```
+
+The resolver runs in the proxy, before any session exists, so it can read
+the cookie and headers only; a profile language stored in the database is out
+of its reach. A result the strings table lacks renders the default locale. The page's `lang`
 attribute follows the pick. A locale the table lacks falls back to
 `defaultLocale`; a locale cookie value the table lacks is ignored.
 
@@ -235,7 +323,8 @@ and the Upstash client both satisfy.
    they have no framework import and nothing to adapt but the defaults.
 3. Copy `page.ts` and `handler.ts` from [handler.md](handler.md), restyle the
    `:root` block, and add a strings table per locale.
-4. Wire the gate first in `proxy.ts` or `middleware.ts` and choose the matcher.
+4. Wire the gate first in `proxy.ts` or `middleware.ts` and choose the
+   matcher, or keep a shared one and add the bypass list.
 5. Set the env vars per environment and run the smoke checks in
    [operations.md](operations.md).
 6. Copy the two suites from [testing.md](testing.md) into the host's runner.
@@ -254,8 +343,8 @@ covered by the suite in [testing.md](testing.md):
 4. Both comparisons are constant-time over equal-length digests.
 5. A body that is not a form is answered with `400`, never thrown to the
    platform.
-6. The matcher is chosen on purpose, and the unlock path sits outside every
-   locale prefix and app route.
+6. The matcher, or the bypass list beside a shared one, is chosen on purpose,
+   and the unlock path sits outside every locale prefix and app route.
 
 Everything else is the host app's: cookie name, unlock path, strings,
 palette, locale detection, attempt store.
@@ -264,10 +353,13 @@ palette, locale detection, attempt store.
 
 - [ ] `package.json` read; no dependency added
 - [ ] Existing proxy/middleware read; the gate runs first in it
-- [ ] Matcher chosen deliberately; webhook and health paths excluded by name
+- [ ] Machine callers listed: webhooks, crons and their trigger URLs, probes, polled feeds
+- [ ] Matcher chosen deliberately, or the host's kept and a bypass list added;
+      webhook and health paths excluded by name, and the list tested at its edges
 - [ ] Cookie name and unlock path checked for collisions
 - [ ] A strings table for every locale the host serves
-- [ ] Locale cookie name and default locale passed in
+- [ ] Locale cookie name and default locale passed in, or the host's resolver
+- [ ] `localeDir` passed when any served locale is right-to-left
 - [ ] `:root` palette adjusted to the host's brand, both colour schemes
 - [ ] `SITE_PIN` and `SITE_GATE_SECRET` set in every environment that should be
       locked, see [operations.md](operations.md)

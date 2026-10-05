@@ -66,6 +66,8 @@ export const GATE_STRINGS_EN: GateStrings = {
 export type GatePageInput = {
   brand: string;
   lang: string;
+  /** Text direction of `lang`; `rtl` for Arabic, Hebrew, Persian, Urdu. */
+  dir: 'ltr' | 'rtl';
   unlockPath: string;
   /** Same-origin path to return to after unlock. Already sanitised. */
   next: string;
@@ -81,10 +83,10 @@ export type GatePageInput = {
  * attributes are stable hooks if the host serves its own stylesheet.
  */
 export function renderGatePage(input: GatePageInput): string {
-  const { brand, lang, unlockPath, next, error, strings } = input;
+  const { brand, lang, dir, unlockPath, next, error, strings } = input;
   const message = error ? strings.errors[error] : '';
   return `<!doctype html>
-<html lang="${escapeHtml(lang)}">
+<html lang="${escapeHtml(lang)}" dir="${dir}" translate="no">
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
@@ -138,7 +140,7 @@ export function renderGatePage(input: GatePageInput): string {
     <h1>${escapeHtml(brand)}</h1>
     <p>${escapeHtml(strings.prompt)}</p>
     <input type="password" name="pin" autocomplete="one-time-code" autofocus
-           required maxlength="128" aria-label="${escapeHtml(strings.label)}"
+           required maxlength="128" dir="ltr" aria-label="${escapeHtml(strings.label)}"
            ${error ? 'aria-invalid="true" aria-describedby="gate-error"' : ''} />
     <input type="hidden" name="next" value="${escapeHtml(next)}" />
     <button type="submit">${escapeHtml(strings.button)}</button>
@@ -161,6 +163,10 @@ Notes on the markup:
   return path, the unlock path. Escaping only `"` is enough to stay inside a
   double-quoted attribute, which is why it survives review; the cost of doing
   it properly is one function.
+- `dir` follows the chosen locale, so an RTL language lays the card out right
+  to left; the PIN field stays `dir="ltr"` because the PIN is typed as
+  written. `translate="no"` keeps the browser from offering to translate a
+  page that already speaks the visitor's language.
 - `color-scheme: light dark` plus two palettes. The page follows the visitor's
   system setting because it has no way to know the app's theme.
 
@@ -194,6 +200,14 @@ export type SiteGateDeps = {
   defaultLocale: string;
   /** Cookie the host's i18n layer uses to remember the locale, if any. */
   localeCookieName?: string;
+  /**
+   * The host's own locale negotiation, when it has one. Replaces the cookie
+   * and `Accept-Language` default; a result missing from `strings` falls back
+   * to `defaultLocale`.
+   */
+  resolveLocale?: (request: NextRequest) => string;
+  /** Text direction of a locale. Defaults to left-to-right. */
+  localeDir?: (locale: string) => 'ltr' | 'rtl';
   log: Pick<Console, 'warn'>;
 };
 
@@ -213,6 +227,8 @@ export function createSiteGate(overrides: Partial<SiteGateDeps> = {}) {
     strings: overrides.strings ?? { en: GATE_STRINGS_EN },
     defaultLocale: overrides.defaultLocale ?? 'en',
     localeCookieName: overrides.localeCookieName,
+    resolveLocale: overrides.resolveLocale,
+    localeDir: overrides.localeDir,
     log: overrides.log ?? console,
   };
 
@@ -228,6 +244,19 @@ export function createSiteGate(overrides: Partial<SiteGateDeps> = {}) {
     return expectedToken;
   }
 
+  function localeFor(request: NextRequest): string {
+    if (deps.resolveLocale) return deps.resolveLocale(request);
+    const cookieLocale = deps.localeCookieName
+      ? request.cookies.get(deps.localeCookieName)?.value
+      : undefined;
+    return pickLocale(
+      request.headers,
+      cookieLocale,
+      Object.keys(deps.strings),
+      deps.defaultLocale
+    );
+  }
+
   function gatePage(
     request: NextRequest,
     next: string,
@@ -235,23 +264,18 @@ export function createSiteGate(overrides: Partial<SiteGateDeps> = {}) {
     status: number,
     extraHeaders: Record<string, string> = {}
   ): NextResponse {
-    const cookieLocale = deps.localeCookieName
-      ? request.cookies.get(deps.localeCookieName)?.value
-      : undefined;
-    const lang = pickLocale(
-      request.headers,
-      cookieLocale,
-      Object.keys(deps.strings),
-      deps.defaultLocale
-    );
-    const strings = deps.strings[lang] ?? deps.strings[deps.defaultLocale];
+    const picked = localeFor(request);
+    // A locale the table lacks, from the host resolver or a stray cookie,
+    // renders the default rather than a page whose `lang` says otherwise.
+    const lang = deps.strings[picked] ? picked : deps.defaultLocale;
     const html = renderGatePage({
       brand: config.brand,
       lang,
+      dir: deps.localeDir?.(lang) ?? 'ltr',
       unlockPath: config.unlockPath,
       next,
       error,
-      strings: strings ?? GATE_STRINGS_EN,
+      strings: deps.strings[lang] ?? GATE_STRINGS_EN,
     });
     return new NextResponse(html, {
       status,
@@ -410,4 +434,6 @@ behaviour for middleware responses.
 - [ ] The gate runs before any other logic in the proxy
 - [ ] The unlock redirect is `303`, with `cache-control: no-store`
 - [ ] The matcher excludes only what must be public, by name
-- [ ] `localeCookieName` and `strings` passed when the host has locales
+- [ ] `strings` passed when the host has locales, with `localeCookieName` or,
+      when the host negotiates locales itself, `resolveLocale`; `localeDir` when
+      any of them is right-to-left

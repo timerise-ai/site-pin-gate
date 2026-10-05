@@ -89,19 +89,19 @@ the skill stays cheap in context until a topic is actually needed.
 | File | Contents |
 |---|---|
 | `SKILL.md` | Entry point: architecture diagram, critical facts, hard rules, quick start, and the reference directory |
-| `references/adaptation.md` | The seam contract with the host app: proxy versus middleware, the matcher, strings, styling, cookie name, a shared attempt store |
+| `references/adaptation.md` | The seam contract with the host app: proxy versus middleware, the machine callers, the matcher or a bypass list beside a shared one, strings, a host locale resolver and RTL, styling, cookie name, a shared attempt store |
 | `references/module.md` | Config, token derivation, constant-time compare, the return-path sanitiser, the attempt store |
 | `references/handler.md` | The behaviour contract, the gate page, the request handler, the proxy wiring |
-| `references/operations.md` | Env vars per environment, a PIN given at invocation, smoke checks, rotation, kill switch, uninstalling, what stays public, extensions |
-| `references/testing.md` | The two test files, 38 tests, and how to run them under vitest or bun |
-| `references/provenance.md` | The engineering ledger: what the audit of the earlier implementation changed and how the templates verify it, what was kept on purpose, and what is new in the skill |
+| `references/operations.md` | Env vars per environment, a PIN given at invocation, smoke checks, rotation, kill switch, uninstalling, what stays public, why platform protection breaks webhooks, browser test runs, apps built from an older copy, extensions |
+| `references/testing.md` | The two test files, 40 tests, and how to run them under vitest or bun |
+| `references/provenance.md` | The engineering ledger, in two sources: what the audit of the earlier implementation changed and how the templates verify it, what was kept on purpose, what is new in the skill, and what applying it to a second host taught |
 | `evals/` | The prompts an operator types after installing (`prompts.md`) and one file per agent eval: the skill installed into an empty Next.js app, one prompt, no help, then type-checked, built and tested |
 
 The seam is the table at the top of `references/adaptation.md`, and it is short because the gate keeps no
 state beyond one cookie and one counter: there is no domain vocabulary to rename, no tenant scope and no data
 access. The attempt store is the one pluggable dependency, in-memory by default with a shared-store adapter
 sketched for a hard global cap. The matcher, cookie name, unlock path, strings, palette, locale detection and
-logger are the host app's, and no template adds a dependency: they import only `next/server` and Web Crypto.
+logger are the host app's, and so is locale negotiation when the host has its own (`resolveLocale`, with `localeDir` for right-to-left languages). A host whose proxy already runs on nearly every path keeps its matcher and skips the gate in code for webhook, cron and feed paths. No template adds a dependency: they import only `next/server` and Web Crypto.
 
 ## The six non-negotiables
 
@@ -124,7 +124,7 @@ by the suite in `references/testing.md`:
    form-encoded, and an unhandled rejection in the proxy is a stack trace instead of a rejected attempt. The
    400 path is in the suite.
 6. **The matcher is chosen on purpose, and the unlock path sits outside every locale prefix and app route.**
-   Whatever the matcher excludes is public, including the sitemap and OG images unless you say otherwise.
+   Whatever the matcher excludes is public, and so is whatever a bypass list beside a shared matcher names, including the sitemap and OG images unless you say otherwise.
    Build assets stay outside it: gating `_next/static` hides nothing from a crawler, which never holds the
    cookie. A colliding unlock path would never render, because the gate answers it before routing.
 
@@ -137,7 +137,7 @@ store.
 |---|---|
 | Real users with real accounts | The host's auth: Clerk, NextAuth, Supabase Auth. A shared PIN cannot be revoked for one person |
 | Per-route or per-tenant authorization | The host's authorization layer; this gate is all-or-nothing by path matcher |
-| Locking preview deployments for team members on Vercel | Vercel Deployment Protection, which does it with no code. The comparison is in `references/operations.md` |
+| Locking preview deployments for team members on Vercel, with no webhooks to receive | Vercel Deployment Protection, which does it with no code. It refuses webhooks and other machine callers; the comparison is in `references/operations.md` |
 | Protecting an API consumed by machines | An API key; a cookie and an HTML form are the wrong shape |
 
 ## Contributing
@@ -145,7 +145,7 @@ store.
 Issues and pull requests are welcome here. Pure markdown, with no build step, but the code blocks are checked:
 every TypeScript block names its destination on the first line, and the module, handler and test blocks are
 written to compile as one project under `strict` and `noUncheckedIndexedAccess` and to run under `bun test`,
-38 tests. Claims in this skill are meant to be verifiable: if you change a factual claim, say how you verified
+40 tests. Claims in this skill are meant to be verifiable: if you change a factual claim, say how you verified
 it, whether against the library, the HTTP specification, the URL parser, or a reproduction.
 
 Adding, removing or renaming a file in `references/` means updating the quick start and the reference

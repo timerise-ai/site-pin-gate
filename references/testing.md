@@ -13,7 +13,7 @@ npx vitest run lib/site-gate      # vitest
 bun test lib/site-gate            # bun
 ```
 
-They were verified under `bun test` and `vitest run` (38 tests) and
+They were verified under `bun test` and `vitest run` (40 tests) and
 type-checked under `strict` and `noUncheckedIndexedAccess`. `next/server` must
 be resolvable, and it is, in any Next.js app.
 
@@ -25,6 +25,13 @@ search the npm cache for a copy, rewrite the `vitest` import, convert the
 assertions to `node:assert` or hand-roll a runner: the suite is the behaviour
 contract, and it should run as written. If the install genuinely fails, run
 `bun test` when bun is present, and otherwise report the tests as not run.
+
+A host whose vitest config defaults to `jsdom` (common when it tests React
+components) runs these files in the wrong environment: `NextRequest`, form
+parsing and `crypto.subtle` belong to Node. Make `// @vitest-environment node`
+the first line of each file, above the `// file:` comment, rather than
+changing the host's default or moving the files. Under `bun test` the line is
+an ordinary comment.
 
 ## Helpers and store
 
@@ -215,13 +222,14 @@ describe('siteGate', () => {
     expect(res?.headers.get('x-robots-tag')).toBe('noindex, nofollow');
     const html = await res?.text();
     expect(html).toContain('name="next" value="/pl/robot?x=1"');
-    expect(html).toContain('<html lang="en">');
+    expect(html).toContain('<html lang="en" dir="ltr"');
   });
 
   it('escapes everything it reflects into the form', () => {
     const html = renderGatePage({
       brand: 'Acme <b>',
       lang: 'en',
+      dir: 'ltr',
       unlockPath: '/__unlock',
       next: '/a?q="><script>',
       error: null,
@@ -279,6 +287,29 @@ describe('siteGate', () => {
     expect(res?.headers.get('cache-control')).toBe('no-store');
   });
 
+  it('speaks the locale the host resolver picks, in its text direction', async () => {
+    const g = createSiteGate({
+      config: readSiteGateConfig({ SITE_PIN: '1234' }),
+      strings: { en: GATE_STRINGS_EN, ar: { ...GATE_STRINGS_EN, button: 'فتح' } },
+      resolveLocale: () => 'ar',
+      localeDir: locale => (locale === 'ar' ? 'rtl' : 'ltr'),
+      log: silent,
+    });
+    const html = (await (await g(get('/')))?.text()) ?? '';
+    expect(html).toContain('<html lang="ar" dir="rtl"');
+    expect(html).toContain('فتح');
+    expect(html).toMatch(/name="pin"[^>]*dir="ltr"/); // the PIN is typed as written
+  });
+
+  it('falls back to the default locale when the resolver picks one it lacks', async () => {
+    const g = createSiteGate({
+      config: readSiteGateConfig({ SITE_PIN: '1234' }),
+      resolveLocale: () => 'de',
+      log: silent,
+    });
+    expect(await (await g(get('/')))?.text()).toContain('<html lang="en" dir="ltr"');
+  });
+
   it('exhausts the attempt budget per client and resets it on success', async () => {
     const g = gate({ SITE_PIN: '1234' }, 2);
     expect((await g(post('pin=0', { ip: '1.1.1.1' })))?.status).toBe(401);
@@ -304,4 +335,7 @@ describe('siteGate', () => {
 
 - [ ] Both files copied next to the module
 - [ ] Runner resolves `next/server` (it runs inside the app, not a scratch dir)
-- [ ] The three off-origin cases stay in the suite when the sanitiser is touched
+- [ ] The off-origin cases, dot segments included, stay in the suite when the
+      sanitiser is touched
+- [ ] A host on `jsdom` by default runs both files with `// @vitest-environment node`
+- [ ] A bypass list, if the host needed one, has its own test at its edges
