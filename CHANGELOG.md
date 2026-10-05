@@ -5,6 +5,43 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.4.0] - 2026-10-05
+
+From applying the skill to a second host: the staging site of a multi-vendor
+marketplace, with an existing proxy, nine UI locales including Arabic, and
+inbound webhooks from six kinds of provider. `provenance.md` records it as
+source B.
+
+### Added
+
+- `resolveLocale` and `localeDir` on `createSiteGate`. A host with its own
+  locale negotiation hands it to the gate, which `pickLocale` could not stand
+  in for: `zh-CN` never matches `zh-Hans` by base language. The gate page takes
+  a `dir`, so a right-to-left locale lays out right to left, and a resolver
+  result missing from the strings table renders the default locale. Two
+  handler tests; the suite is 40 tests.
+- The bypass-list variant in `adaptation.md`, for a host whose proxy already
+  runs on nearly every path for other jobs: keep its matcher and skip the gate
+  in code for webhook, cron and feed prefixes, tested at its edges.
+- A machine-caller inventory in the host probe: webhooks, cron trigger URLs,
+  health probes and polled feeds, and why browser redirects stay gated.
+- In `operations.md`: why platform password protection refuses webhooks and
+  what that costs, which environment a staging domain is really served from, a
+  webhook path in the smoke checks, unlocking before a browser test run, and
+  what an app built from an older copy of the skill has to port.
+- In `testing.md`: `// @vitest-environment node` for a host whose runner
+  defaults to `jsdom`.
+
+### Changed
+
+- The gate page sets `translate="no"` on `<html>` and `dir="ltr"` on the PIN
+  field.
+- The matcher fact in `SKILL.md`, and non-negotiable 6 in the README and in
+  `adaptation.md`, name the bypass list as the boundary beside a shared matcher.
+- The fix order in `provenance.md` starts by reading the changelog since the
+  version a gate was built from: source B was built from 0.3.1 and carried the
+  dot-segment redirect fixed in 0.3.6 until it was ported.
+
 ## [0.3.7] - 2026-09-27
 
 Fix release, from scoring the prompt-1 agent eval runs against 0.3.6.
