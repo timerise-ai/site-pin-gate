@@ -13,7 +13,7 @@ npx vitest run lib/site-gate      # vitest
 bun test lib/site-gate            # bun
 ```
 
-They were verified under `bun test` and `vitest run` (40 tests) and
+They were verified under `bun test` and `vitest run` (41 tests) and
 type-checked under `strict` and `noUncheckedIndexedAccess`. `next/server` must
 be resolvable, and it is, in any Next.js app.
 
@@ -251,6 +251,20 @@ describe('siteGate', () => {
     expect(cookie).toMatch(/HttpOnly/i);
     expect(cookie).toMatch(/Secure/i);
     expect(cookie).toMatch(/SameSite=lax/i);
+    expect(cookie).toMatch(/Max-Age=2592000/i);
+  });
+
+  it('issues a session cookie when cookieMaxAgeSeconds is null', async () => {
+    const config = readSiteGateConfig(
+      { NODE_ENV: 'production', SITE_PIN: '1234', SITE_GATE_SECRET: 's3cret' },
+      { cookieMaxAgeSeconds: null },
+    );
+    const res = await createSiteGate({ config, log: silent })(post('pin=1234&next=/'));
+    expect(res?.status).toBe(303);
+    const cookie = res?.headers.get('set-cookie') ?? '';
+    expect(cookie).toContain('site_access=' + (await deriveGateToken('1234', 's3cret')));
+    expect(cookie).toMatch(/HttpOnly/i);
+    expect(cookie).not.toMatch(/Max-Age|Expires/i);
   });
 
   it('never redirects off-origin after unlock', async () => {

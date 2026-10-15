@@ -29,8 +29,11 @@ export type SiteGateConfig = {
   cookieName: string;
   /** Path the gate form posts to. Must not collide with an app route. */
   unlockPath: string;
-  /** How long an unlocked browser stays unlocked. */
-  cookieMaxAgeSeconds: number;
+  /**
+   * How long an unlocked browser stays unlocked. `null` issues a session
+   * cookie (no `Max-Age`): the browser drops it on close and asks again.
+   */
+  cookieMaxAgeSeconds: number | null;
   /** Failed-attempt budget per client key. */
   attempts: { limit: number; windowMs: number };
   /** Send the cookie with `Secure`. Only turn off for plain-http local dev. */

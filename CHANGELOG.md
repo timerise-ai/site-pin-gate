@@ -5,6 +5,17 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Added
+
+- `cookieMaxAgeSeconds: null` issues a session cookie: no `Max-Age`, so the
+  browser drops it on close and the PIN is asked again on the next browser
+  session. The 30-day default is unchanged. `adaptation.md` carries the
+  variant and what a session cookie does not do (open windows, session
+  restore, cookies already issued); one handler test, and the unlock test now
+  asserts the default `Max-Age`. The suite is 41 tests.
+
 ## [0.4.0] - 2026-10-05
 
 From applying the skill to a second host: the staging site of a multi-vendor

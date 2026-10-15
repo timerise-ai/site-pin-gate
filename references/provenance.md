@@ -217,6 +217,17 @@ environment was armed; the results are marked.
   **Shipped:** *An app built from an older copy of this skill* in
   [operations.md](operations.md), and item 0 of the fix order below.
 
+- **The client asked for the PIN on every visit.** Testers noticed that one
+  unlock lasted the 30-day cookie's lifetime and asked for the PIN to be
+  required each time the site was opened. **Shipped:** `cookieMaxAgeSeconds:
+  null` for a session cookie, one handler test, and *A session cookie instead
+  of a fixed lifetime* in [adaptation.md](adaptation.md), with what a session
+  cookie does not do (open windows, session restore, cookies already issued).
+  B renamed its cookie in the same change so browsers holding the 30-day one
+  were asked again. **Verified:** the suite on B's code; a session cookie is
+  a browser behaviour, not a server one, so there is nothing more to measure
+  on the server.
+
 ## If you are upgrading an existing gate
 
 Fix order, most damaging first:

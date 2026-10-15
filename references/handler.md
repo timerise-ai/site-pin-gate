@@ -16,7 +16,7 @@ every request and keeping no store at all.
 | `POST /__unlock`, body is not a form | `400`, gate page, "invalid" message | as 401 |
 | `POST /__unlock`, budget exhausted | `429`, gate page, "too many attempts" | as 401, plus `retry-after` in seconds |
 | `POST /__unlock`, wrong PIN | `401`, gate page, "wrong" message, return path preserved | as 401 |
-| `POST /__unlock`, right PIN | `303` to the sanitised return path | `cache-control: no-store`, `set-cookie: <name>=<token>; HttpOnly; SameSite=Lax; Secure; Path=/; Max-Age=...` |
+| `POST /__unlock`, right PIN | `303` to the sanitised return path | `cache-control: no-store`, `set-cookie: <name>=<token>; HttpOnly; SameSite=Lax; Secure; Path=/; Max-Age=...` (no `Max-Age` when `cookieMaxAgeSeconds` is `null`) |
 
 Two things the table encodes that are easy to undo by accident:
 
@@ -359,7 +359,8 @@ export function createSiteGate(overrides: Partial<SiteGateDeps> = {}) {
       sameSite: 'lax',
       secure: config.secureCookie,
       path: '/',
-      maxAge: config.cookieMaxAgeSeconds,
+      // No `maxAge` at all for a session cookie: the browser drops it on close.
+      ...(config.cookieMaxAgeSeconds === null ? {} : { maxAge: config.cookieMaxAgeSeconds }),
     });
     return response;
   };

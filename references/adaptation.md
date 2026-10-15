@@ -252,9 +252,9 @@ sets. If the host insists on its own stylesheet, the matcher's default
 excludes nothing under `public/`, so a `<link>` to `/gate.css` would itself be
 gated; add `gate\\.css` to the matcher exclusion before linking it.
 
-## Cookie name and unlock path
+## Cookie name, lifetime and unlock path
 
-Both are overridable per host. Rename when the defaults collide, or when two
+All three are overridable per host. Rename when the defaults collide, or when two
 gated apps share a parent domain (cookies do not carry a port, and a cookie
 named `site_access` set by one app on `localhost` is presented to the other).
 The unlock path must not resolve to an app route or sit under a locale prefix;
@@ -274,6 +274,39 @@ export const siteGate = createSiteGate({
   }),
 });
 ```
+
+### A session cookie instead of a fixed lifetime
+
+The default cookie lasts 30 days, so a browser that unlocked once is not asked
+again for a month. When the operator wants the PIN asked on every new browser
+session, pass `cookieMaxAgeSeconds: null`: the cookie goes out without
+`Max-Age` or `Expires`, and the browser drops it when it is fully closed.
+
+```ts
+// file: lib/site-gate/instance.ts
+import { readSiteGateConfig } from './config';
+import { createSiteGate } from './handler';
+
+export const siteGate = createSiteGate({
+  config: readSiteGateConfig(process.env, {
+    cookieName: 'preview_session',
+    cookieMaxAgeSeconds: null, // session cookie: asked again after the browser closes
+  }),
+});
+```
+
+Tell the operator what "session" means before they promise it to anyone:
+
+- **Closing a tab is not closing the browser.** While any window stays open,
+  new tabs ride on the same cookie.
+- **Session restore keeps session cookies.** A browser set to continue where
+  it left off (Chrome and Edge "Continue where you left off", Firefox "Open
+  previous windows and tabs") restores them, so it never asks. A private
+  window, or that setting off, asks every time.
+- **Cookies already issued keep their old lifetime.** Switching a live gate to
+  a session cookie does not shorten cookies browsers already hold. Rename the
+  cookie at the same time, as above, and every browser is asked once more;
+  rotating the PIN does the same, at the cost of handing out a new one.
 
 ## A shared attempt store
 
@@ -357,6 +390,7 @@ palette, locale detection, attempt store.
 - [ ] Matcher chosen deliberately, or the host's kept and a bypass list added;
       webhook and health paths excluded by name, and the list tested at its edges
 - [ ] Cookie name and unlock path checked for collisions
+- [ ] Cookie lifetime decided: the 30-day default, another number, or `null` for a session cookie
 - [ ] A strings table for every locale the host serves
 - [ ] Locale cookie name and default locale passed in, or the host's resolver
 - [ ] `localeDir` passed when any served locale is right-to-left
